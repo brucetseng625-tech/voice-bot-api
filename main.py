@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import tempfile
 import os
+os.environ["HF_HOME"] = "/Users/brucetseng/.hermes/profiles/sdd-hybrid/home/.cache/huggingface"
 import time
 import soundfile as sf
 import torch

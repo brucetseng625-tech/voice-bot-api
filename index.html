@@ -470,12 +470,40 @@
             // A. Update VRM solver
             vrm.update(delta);
 
-            // B. Idle motion (Gentle swaying + breathing)
-            vrm.scene.position.y = Math.sin(t * 1.6) * 0.006;
+            // B. Idle motion (Gentle swaying + breathing + Y position adjustment)
+            vrm.scene.position.y = -0.35 + Math.sin(t * 1.6) * 0.006; // Lower model slightly to frame beautifully waist-up
+            
+            // Chest breathing
             const chest = vrm.humanoid.getNormalizedBoneNode('chest');
             if (chest) {
                 chest.rotation.z = Math.sin(t * 1.8) * 0.008;
                 chest.rotation.x = (Math.sin(t * 1.2) * 0.005) + 0.01;
+            }
+
+            // Natural Standing / Resting Pose (Rotates arms down from stiff T-pose)
+            const leftUpperArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
+            if (leftUpperArm) {
+                leftUpperArm.rotation.z = 1.35 + Math.sin(t * 1.6) * 0.015; // arms down, gentle breathing sway
+                leftUpperArm.rotation.x = 0.05;
+                leftUpperArm.rotation.y = -0.05;
+            }
+            const rightUpperArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+            if (rightUpperArm) {
+                rightUpperArm.rotation.z = -1.35 - Math.sin(t * 1.6) * 0.015; // arms down, gentle breathing sway
+                rightUpperArm.rotation.x = 0.05;
+                rightUpperArm.rotation.y = 0.05;
+            }
+            const leftLowerArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
+            if (leftLowerArm) {
+                leftLowerArm.rotation.y = -0.3 + Math.sin(t * 1.6) * 0.01; // slightly bent inward
+            }
+            const rightLowerArm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
+            if (rightLowerArm) {
+                rightLowerArm.rotation.y = 0.3 - Math.sin(t * 1.6) * 0.01; // slightly bent inward
+            }
+            const spine = vrm.humanoid.getNormalizedBoneNode('spine');
+            if (spine) {
+                spine.rotation.x = 0.03 + Math.sin(t * 1.6) * 0.005;
             }
 
             // C. LookAt Eye Tracking logic
