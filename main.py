@@ -158,7 +158,7 @@ async def audio_stream_generator(text, style):
         chunk_buffer = np.array([], dtype=np.float32)
         
         for chunk in current_model.generate_streaming(
-            text=full_text, cfg_value=2.0, inference_timesteps=20
+            text=full_text, cfg_value=2.0, inference_timesteps=12
         ):
             if isinstance(chunk, torch.Tensor): chunk_np = chunk.cpu().numpy()
             elif isinstance(chunk, np.ndarray): chunk_np = chunk
