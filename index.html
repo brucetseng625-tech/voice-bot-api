@@ -3,107 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>緋雪 AI 虛擬客服</title>
+    <title>緋雪 AI 虛擬客服 | 3D Avatar</title>
     <style>
-        body { margin: 0; background: #050508; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
+        body { margin: 0; background: #050508; overflow: hidden; font-family: 'Noto Sans TC', sans-serif; color: white; }
         #avatar-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a24 0%, #000 100%); }
-        #subtitle-box { position: absolute; bottom: 100px; width: 80%; max-width: 800px; text-align: center; font-size: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); min-height: 2rem; color: #e2e8f0; }
-        #input-area { position: absolute; bottom: 20px; width: 80%; max-width: 600px; display: flex; gap: 10px; }
-        #user-input { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 1rem; backdrop-filter: blur(10px); }
-        #user-input:focus { border-color: #8b5cf6; }
-        #send-btn { background: #8b5cf6; border: none; color: white; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem; }
-        #status-badge { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; border: 1px solid #333; }
-        #thinking-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; color: #8b5cf6; display: none; }
+        
+        /* UI Overlay */
+        #ui-layer { position: absolute; bottom: 0; width: 100%; pointer-events: none; }
+        
+        #subtitle-box { 
+            width: 100%; text-align: center; font-size: 1.6rem; text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+            padding: 2rem 0; min-height: 3rem; color: #fff; letter-spacing: 1px;
+        }
+
+        #input-area {
+            pointer-events: auto; width: 80%; max-width: 600px; margin: 0 auto;
+            display: flex; gap: 10px; padding-bottom: 2rem;
+        }
+        #user-input {
+            flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+            color: white; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 1rem;
+            backdrop-filter: blur(10px); transition: 0.3s;
+        }
+        #user-input:focus { border-color: #8b5cf6; background: rgba(255,255,255,0.12); }
+        #send-btn {
+            background: #8b5cf6; border: none; color: white; padding: 0 25px;
+            border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem;
+            transition: 0.2s;
+        }
+        #send-btn:hover { background: #7c3aed; }
+
+        #status-badge {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; font-size: 0.8rem;
+            border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981; }
+
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 1.2rem; color: #888;
+        }
     </style>
 </head>
 <body>
 
 <div id="avatar-container"></div>
+<div id="loading">正在載入 3D 虛擬人...</div>
 
-<div id="status-badge">🟢 Online | VoxCPM Local</div>
-<div id="thinking-badge">💭 思考中...</div>
+<div id="status-badge"><div class="dot"></div> Online | VoxCPM Local</div>
 
-<div id="subtitle-box">老公～歡迎回來！今天想聊什麼呢？</div>
-
-<div id="input-area">
-    <input type="text" id="user-input" placeholder="輸入訊息或按 OpenLess 快捷鍵..." autofocus>
-    <button id="send-btn">發送</button>
+<div id="ui-layer">
+    <div id="subtitle-box"></div>
+    <div id="input-area">
+        <input type="text" id="user-input" placeholder="輸入訊息或按 OpenLess 快捷鍵..." autofocus>
+        <button id="send-btn">發送</button>
+    </div>
 </div>
 
-<!-- Three.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Three.js & VRM -->
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
 
-<script>
-    // --- 3D Scene Setup ---
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.z = 4;
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRMLoaderPlugin, VRMUtils } from 'three/addons/libs/VRMLoaderPlugin.js';
+
+    // --- Scene Setup ---
+    const container = document.getElementById('avatar-container');
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.getElementById('avatar-container').appendChild(renderer.domElement);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0x404040, 1.5));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1); dirLight.position.set(2, 2, 5); scene.add(dirLight);
-    const rimLight = new THREE.DirectionalLight(0x8b5cf6, 1.5); rimLight.position.set(-2, 1, -2); scene.add(rimLight);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.3, 2.5); // Eye level
+    camera.lookAt(0, 1.3, 0);
 
-    // Avatar Head
-    const head = new THREE.Group(); scene.add(head);
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(2, 2, 5); scene.add(dirLight);
+    const rimLight = new THREE.DirectionalLight(0x8b5cf6, 1.0); // Purple rim light
+    rimLight.position.set(-3, 2, -2); scene.add(rimLight);
 
-    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ color: 0xffe0d0, roughness: 0.4 }));
-    head.add(headMesh);
+    // Load VRM Model
+    let vrm = null;
+    const loader = new GLTFLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.register((parser) => new VRMLoaderPlugin(parser));
 
-    // Eyes
-    const eyeGeo = new THREE.SphereGeometry(0.12, 16, 16);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat); leftEye.position.set(-0.35, 0.15, 0.85); head.add(leftEye);
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat); rightEye.position.set(0.35, 0.15, 0.85); head.add(rightEye);
+    // Using a high-quality sample model (Avatar Sample B)
+    const modelUrl = 'https://cdn.jsdelivr.net/gh/pixiv/three-vrm@dev/packages/three-vrm/examples/VRM1_Sample_cc-by/AvatarSample_B.vrm';
 
-    // Mouth
-    const mouthGeo = new THREE.SphereGeometry(0.15, 16, 16);
-    const mouthMat = new THREE.MeshBasicMaterial({ color: 0xcc3333 });
-    const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-    mouth.position.set(0, -0.35, 0.9); mouth.scale.set(1.5, 1, 1); head.add(mouth);
-
-    // Hair
-    const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(1.05, 32, 32, 0, 6.3, 0, 1.5), new THREE.MeshStandardMaterial({ color: 0x2a1b38 }));
-    hairMesh.position.y = 0.1; head.add(hairMesh);
+    loader.load(modelUrl, (gltf) => {
+        vrm = gltf.userData.vrm;
+        VRMUtils.rotateVRM0(vrm); // Fix rotation for older VRMs if needed
+        scene.add(vrm.scene);
+        document.getElementById('loading').style.display = 'none';
+        console.log('VRM Loaded');
+    }, (p) => {}, (err) => {
+        console.error(err);
+        document.getElementById('loading').innerText = '模型載入失敗，請檢查網路';
+    });
 
     // Animation Loop
-    let targetMouthOpen = 0; let currentMouthOpen = 0;
+    const clock = new THREE.Clock();
     function animate() {
         requestAnimationFrame(animate);
-        currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.2;
-        mouth.scale.y = 0.2 + currentMouthOpen * 3; 
-        head.rotation.y = Math.sin(Date.now() * 0.001) * 0.05;
+        const delta = clock.getDelta();
+        if (vrm) {
+            vrm.update(delta);
+            
+            // Idle animation: subtle breathing/bobbing
+            vrm.scene.position.y = Math.sin(clock.elapsedTime * 1.5) * 0.02;
+            vrm.scene.rotation.y = Math.sin(clock.elapsedTime * 0.5) * 0.1;
+        }
         renderer.render(scene, camera);
     }
     animate();
 
     // --- Audio & Logic ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
 
     async function startConversation(userText) {
         const input = document.getElementById('user-input');
         const subtitle = document.getElementById('subtitle-box');
-        const thinking = document.getElementById('thinking-badge');
-
         input.value = '';
-        subtitle.innerText = userText;
-        thinking.style.display = 'block';
-        targetMouthOpen = 0;
+        subtitle.innerText = "💭 思考中...";
+        
+        // Reset mouth
+        if(vrm) vrm.expressionManager.setValue('aa', 0);
 
         try {
-            // 1. Get AI Brain Response
+            // 1. Get Brain Response
             const res = await fetch(`/v1/chat/reply?text=${encodeURIComponent(userText)}`);
             const data = await res.json();
             const replyText = data.reply;
 
-            // 2. Speak the Reply
+            // 2. Speak
             subtitle.innerText = replyText;
-            thinking.style.display = 'none';
-            
             const ttsRes = await fetch('/v1/audio/speech', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: replyText, style: 'sweet', stream: true })
@@ -133,23 +183,38 @@
             source.connect(analyser); analyser.connect(audioCtx.destination);
             source.start();
 
+            // 3. Lip-Sync Loop
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             const interval = setInterval(() => {
                 analyser.getByteFrequencyData(dataArray);
+                // Map volume to 'aa' expression (0 to 1)
                 const avg = dataArray.reduce((a,b)=>a+b,0) / dataArray.length;
-                targetMouthOpen = Math.min(1, avg / 50); 
+                if (vrm) {
+                    // Smooth mapping: volume usually 0-150 for speech
+                    const open = Math.min(1, avg / 60); 
+                    vrm.expressionManager.setValue('aa', open);
+                    // Add subtle 'ih' or 'ou' for realism? Keep simple for now.
+                    vrm.expressionManager.setValue('blink', 0); // Keep eyes open while talking
+                }
             }, 50);
 
-            source.onended = () => { clearInterval(interval); targetMouthOpen = 0; };
+            source.onended = () => {
+                clearInterval(interval);
+                if(vrm) {
+                    vrm.expressionManager.setValue('aa', 0);
+                    vrm.expressionManager.setValue('blink', 1); // Blink after talking
+                    setTimeout(() => vrm.expressionManager.setValue('blink', 0), 200);
+                }
+                subtitle.innerText = "";
+            };
 
         } catch (err) {
-            thinking.style.display = 'none';
             subtitle.innerText = "連線錯誤...";
             console.error(err);
         }
     }
 
-    // --- Input Handling ---
+    // --- Event Listeners ---
     document.getElementById('send-btn').onclick = () => {
         const t = document.getElementById('user-input').value;
         if(t) startConversation(t);
@@ -160,6 +225,13 @@
             if(t) startConversation(t);
         }
     };
+
+    // Handle Resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 </script>
 
 </body>
