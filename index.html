@@ -7,55 +7,25 @@
     <style>
         body { margin: 0; background: #050508; overflow: hidden; font-family: 'Noto Sans TC', sans-serif; color: white; }
         #avatar-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a24 0%, #000 100%); }
-        
-        /* UI Overlay */
         #ui-layer { position: absolute; bottom: 0; width: 100%; pointer-events: none; }
-        
-        #subtitle-box { 
-            width: 100%; text-align: center; font-size: 1.6rem; text-shadow: 0 2px 4px rgba(0,0,0,0.9);
-            padding: 2rem 0; min-height: 3rem; color: #fff; letter-spacing: 1px;
-        }
-
-        #input-area {
-            pointer-events: auto; width: 80%; max-width: 600px; margin: 0 auto;
-            display: flex; gap: 10px; padding-bottom: 2rem;
-        }
-        #user-input {
-            flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-            color: white; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 1rem;
-            backdrop-filter: blur(10px); transition: 0.3s;
-        }
+        #subtitle-box { width: 100%; text-align: center; font-size: 1.6rem; text-shadow: 0 2px 4px rgba(0,0,0,0.9); padding: 2rem 0; min-height: 3rem; color: #fff; letter-spacing: 1px; }
+        #input-area { pointer-events: auto; width: 80%; max-width: 600px; margin: 0 auto; display: flex; gap: 10px; padding-bottom: 2rem; }
+        #user-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 1rem; backdrop-filter: blur(10px); transition: 0.3s; }
         #user-input:focus { border-color: #8b5cf6; background: rgba(255,255,255,0.12); }
-        #send-btn {
-            background: #8b5cf6; border: none; color: white; padding: 0 25px;
-            border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem;
-            transition: 0.2s;
-        }
+        #send-btn { background: #8b5cf6; border: none; color: white; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
         #send-btn:hover { background: #7c3aed; }
-
-        #status-badge {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; font-size: 0.8rem;
-            border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px);
-            display: flex; align-items: center; gap: 8px;
-        }
+        #status-badge { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); display: flex; align-items: center; gap: 8px; }
         .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981; }
-
-        #loading {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 1.2rem; color: #888; transition: opacity 0.5s;
-        }
+        #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; color: #888; }
     </style>
 </head>
 <body>
 
 <div id="avatar-container"></div>
-<div id="loading">正在載入 3D 虛擬人...</div>
-
 <div id="status-badge"><div class="dot"></div> Online | VoxCPM Local</div>
 
 <div id="ui-layer">
-    <div id="subtitle-box"></div>
+    <div id="subtitle-box">老公～歡迎回來！今天想聊什麼呢？</div>
     <div id="input-area">
         <input type="text" id="user-input" placeholder="輸入訊息或按 OpenLess 快捷鍵..." autofocus>
         <button id="send-btn">發送</button>
@@ -70,7 +40,6 @@
         "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
         "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
     }
-}
 </script>
 
 <script type="module">
@@ -78,69 +47,111 @@
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 
-    // --- Scene Setup ---
     const container = document.getElementById('avatar-container');
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 1.3, 3.0);
-    camera.lookAt(0, 1.2, 0);
+    camera.position.set(0, 1.2, 2.5);
+    camera.lookAt(0, 1.1, 0);
 
     // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambientLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.set(2, 2, 5); scene.add(dirLight);
     const rimLight = new THREE.DirectionalLight(0x8b5cf6, 1.0); 
     rimLight.position.set(-3, 2, -2); scene.add(rimLight);
 
-    // Load VRM Model
     let vrm = null;
+    let avatarGroup = null;
+    let mouthMesh = null;
+    let isVRM = false;
+
+    // Load VRM Model
     const loader = new GLTFLoader();
     loader.crossOrigin = 'anonymous';
     loader.register((parser) => new VRMLoaderPlugin(parser));
-
-    // Using a lighter, fast-loading model (AvatarSample_A)
-    const modelUrl = 'https://cdn.jsdelivr.net/gh/pixiv/three-vrm@dev/packages/three-vrm/examples/VRM1_Sample_cc-by/AvatarSample_A.vrm';
+    const modelUrl = './model.vrm';
 
     loader.load(modelUrl, (gltf) => {
         vrm = gltf.userData.vrm;
         VRMUtils.rotateVRM0(vrm); 
         scene.add(vrm.scene);
-        
-        // Adjust camera to fit model
-        const box = new THREE.Box3().setFromObject(vrm.scene);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        
-        // If loading successful, hide loading text
-        document.getElementById('loading').style.opacity = '0';
-        setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
-        
+        isVRM = true;
+        document.getElementById('subtitle-box').innerText = "老公～歡迎回來！今天想聊什麼呢？";
         console.log('VRM Loaded Successfully');
-    }, (p) => {
-        // Progress
-        const pct = (p.loaded / p.total * 100).toFixed(0);
-        document.getElementById('loading').innerText = `正在載入 3D 虛擬人... ${pct}%`;
-    }, (err) => {
-        console.error(err);
-        document.getElementById('loading').innerText = '模型載入失敗，請檢查網路';
+    }, (p) => {}, (err) => {
+        console.warn('VRM load failed, falling back to procedural avatar.', err);
+        createProceduralAvatar();
     });
+
+    function createProceduralAvatar() {
+        avatarGroup = new THREE.Group();
+        scene.add(avatarGroup);
+
+        // Head
+        const headGeo = new THREE.SphereGeometry(0.6, 32, 32);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0d0, roughness: 0.3, metalness: 0.1 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.1;
+        avatarGroup.add(head);
+
+        // Hair
+        const hairGeo = new THREE.SphereGeometry(0.65, 32, 32, 0, 6.3, 0, 1.5);
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x2a1b38, roughness: 0.8 });
+        const hair = new THREE.Mesh(hairGeo, hairMat);
+        hair.position.y = 1.15;
+        avatarGroup.add(hair);
+
+        // Eyes
+        const eyeGeo = new THREE.SphereGeometry(0.08, 16, 16);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x444444 });
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+        leftEye.position.set(-0.2, 1.15, 0.5);
+        avatarGroup.add(leftEye);
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+        rightEye.position.set(0.2, 1.15, 0.5);
+        avatarGroup.add(rightEye);
+
+        // Mouth (Lip-sync target)
+        const mouthGeo = new THREE.SphereGeometry(0.1, 16, 16);
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0xcc3333 });
+        mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
+        mouthMesh.position.set(0, 0.85, 0.5);
+        mouthMesh.scale.set(1.5, 1, 1);
+        avatarGroup.add(mouthMesh);
+    }
 
     // Animation Loop
     const clock = new THREE.Clock();
+    let targetMouthOpen = 0;
+    let currentMouthOpen = 0;
+
     function animate() {
         requestAnimationFrame(animate);
         const delta = clock.getDelta();
-        if (vrm) {
+        const t = clock.elapsedTime;
+
+        if (isVRM && vrm) {
             vrm.update(delta);
+            vrm.scene.position.y = Math.sin(t * 1.5) * 0.02;
+            vrm.scene.rotation.y = Math.sin(t * 0.5) * 0.1;
+        } else if (avatarGroup) {
+            avatarGroup.position.y = Math.sin(t * 1.5) * 0.02;
+            avatarGroup.rotation.y = Math.sin(t * 0.5) * 0.1;
             
-            // Idle animation
-            vrm.scene.position.y = Math.sin(clock.elapsedTime * 1.5) * 0.02;
-            vrm.scene.rotation.y = Math.sin(clock.elapsedTime * 0.5) * 0.1;
+            // Smooth mouth
+            currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.2;
+            if(mouthMesh) {
+                mouthMesh.scale.y = 0.2 + currentMouthOpen * 3;
+                mouthMesh.position.z = 0.5 - currentMouthOpen * 0.1;
+            }
         }
         renderer.render(scene, camera);
     }
@@ -157,7 +168,8 @@
         input.value = '';
         subtitle.innerText = "💭 思考中...";
         
-        if(vrm) vrm.expressionManager.setValue('aa', 0);
+        if (isVRM && vrm) vrm.expressionManager.setValue('aa', 0);
+        else targetMouthOpen = 0;
 
         try {
             // 1. Get Brain Response
@@ -201,21 +213,22 @@
             const interval = setInterval(() => {
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a,b)=>a+b,0) / dataArray.length;
-                if (vrm) {
-                    const open = Math.min(1, avg / 60); 
+                const open = Math.min(1, avg / 60);
+
+                if (isVRM && vrm) {
                     vrm.expressionManager.setValue('aa', open);
-                    vrm.expressionManager.setValue('blink', 0); 
+                } else {
+                    targetMouthOpen = open;
                 }
             }, 50);
 
             source.onended = () => {
                 clearInterval(interval);
-                if(vrm) {
+                if (isVRM && vrm) {
                     vrm.expressionManager.setValue('aa', 0);
-                    vrm.expressionManager.setValue('blink', 1);
-                    setTimeout(() => vrm.expressionManager.setValue('blink', 0), 200);
+                } else {
+                    targetMouthOpen = 0;
                 }
-                subtitle.innerText = "";
             };
 
         } catch (err) {
