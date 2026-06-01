@@ -421,6 +421,26 @@
     let isMouseMoving = false;
     let lastMouseMoveTime = 0;
 
+    // Procedural Postures & Speech Gestures setup
+    const postureTargets = {
+        neckX: 0, neckY: 0, neckZ: 0,
+        spineX: 0, spineY: 0, spineZ: 0,
+        shoulderL: 0, shoulderR: 0,
+        armLX: 0, armLY: 0, armLZ: 0,
+        armRX: 0, armRY: 0, armRZ: 0
+    };
+    const postureCurrents = {
+        neckX: 0, neckY: 0, neckZ: 0,
+        spineX: 0, spineY: 0, spineZ: 0,
+        shoulderL: 0, shoulderR: 0,
+        armLX: 0, armLY: 0, armLZ: 0,
+        armRX: 0, armRY: 0, armRZ: 0
+    };
+
+    let isNodding = false;
+    let nodTimer = 0;
+    const nodDuration = 0.7;
+
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
@@ -470,9 +490,13 @@
             // A. Update VRM solver
             vrm.update(delta);
 
-            // B. Idle motion (Gentle swaying + breathing + Y position adjustment)
+            // B. Idle & Procedural Gestures (Swaying + Breathing + Talking posture)
             vrm.scene.position.y = -0.35 + Math.sin(t * 1.6) * 0.006; // Lower model slightly to frame beautifully waist-up
             
+            // Voice volume dynamic speech bobbing coefficient
+            const voiceAmp = currentMouthOpen; // 0 to 1 based on volume RMS
+            const isSpeaking = activeSources.length > 0;
+
             // Chest breathing
             const chest = vrm.humanoid.getNormalizedBoneNode('chest');
             if (chest) {
@@ -480,37 +504,123 @@
                 chest.rotation.x = (Math.sin(t * 1.2) * 0.005) + 0.01;
             }
 
-            // Natural Standing / Resting Pose (Rotates arms down from stiff T-pose)
+            // D2. Calculate Emotional Posture Targets based on Expression LERPs
+            // Reset base offsets to default
+            postureTargets.neckX = 0; postureTargets.neckY = 0; postureTargets.neckZ = 0;
+            postureTargets.spineX = 0; postureTargets.spineY = 0; postureTargets.spineZ = 0;
+            postureTargets.shoulderL = 0; postureTargets.shoulderR = 0;
+            postureTargets.armLX = 0; postureTargets.armLY = 0; postureTargets.armLZ = 0;
+            postureTargets.armRX = 0; postureTargets.armRY = 0; postureTargets.armRZ = 0;
+
+            // Apply offsets based on active emotion intensities
+            if (expressionCurrents.happy > 0.05) {
+                const w = expressionCurrents.happy;
+                postureTargets.neckZ = 0.08 * w;      // Sweet head tilt
+                postureTargets.spineX = -0.02 * w;    // Lift chest up
+                postureTargets.armLZ = -0.15 * w;     // Arms open slightly wider
+                postureTargets.armRZ = 0.15 * w;
+            }
+            if (expressionCurrents.sad > 0.05) {
+                const w = expressionCurrents.sad;
+                postureTargets.neckX = 0.12 * w;      // Look down sadly
+                postureTargets.spineX = 0.08 * w;     // Slouch forward
+                postureTargets.shoulderL = 0.06 * w;  // Shoulders dropped
+                postureTargets.shoulderR = -0.06 * w;
+                postureTargets.armLX = 0.08 * w;      // Arms closer to body
+                postureTargets.armRX = -0.08 * w;
+            }
+            if (expressionCurrents.angry > 0.05) {
+                const w = expressionCurrents.angry;
+                postureTargets.neckX = 0.08 * w;      // Head forward slightly
+                postureTargets.spineX = 0.04 * w;     // Tilt forward slightly
+                postureTargets.shoulderL = -0.08 * w; // Shoulders raised aggressively
+                postureTargets.shoulderR = 0.08 * w;
+            }
+            if (expressionCurrents.surprised > 0.05) {
+                const w = expressionCurrents.surprised;
+                postureTargets.spineX = -0.06 * w;    // Recoil backward
+                postureTargets.neckX = -0.04 * w;     // Look up/back slightly
+                postureTargets.shoulderL = -0.04 * w; // Shrug shoulders slightly
+                postureTargets.shoulderR = 0.04 * w;
+            }
+
+            // LERP current postures towards target postures
+            for (const key in postureTargets) {
+                postureCurrents[key] += (postureTargets[key] - postureCurrents[key]) * Math.min(1, 4.0 * delta);
+            }
+
+            // D3. Acknowledgment Nodding Motion
+            let nodOffset = 0;
+            if (isNodding) {
+                nodTimer += delta;
+                if (nodTimer >= nodDuration) {
+                    isNodding = false;
+                } else {
+                    // Nodding curve: tilts head forward and then returns smoothly
+                    nodOffset = Math.sin((nodTimer / nodDuration) * Math.PI) * 0.14;
+                }
+            }
+
+            // Spine dynamic sway
+            const spine = vrm.humanoid.getNormalizedBoneNode('spine');
+            if (spine) {
+                const speechSway = isSpeaking ? Math.sin(t * 2.2) * 0.02 * (1.0 + voiceAmp) : 0;
+                spine.rotation.x = 0.03 + Math.sin(t * 1.6) * 0.005 + postureCurrents.spineX;
+                spine.rotation.y = Math.sin(t * 1.0) * 0.005 + postureCurrents.spineY + speechSway;
+                spine.rotation.z = postureCurrents.spineZ;
+            }
+
+            // Neck nodding & swaying
+            const neck = vrm.humanoid.getNormalizedBoneNode('neck') || vrm.humanoid.getNormalizedBoneNode('head');
+            if (neck) {
+                const speechBob = isSpeaking ? Math.cos(t * 3.8) * 0.015 * (1.0 + voiceAmp) : 0;
+                neck.rotation.x = nodOffset + postureCurrents.neckX + speechBob;
+                neck.rotation.y = postureCurrents.neckY;
+                neck.rotation.z = postureCurrents.neckZ + (isSpeaking ? Math.sin(t * 1.8) * 0.01 : 0);
+            }
+
+            // Shoulders breathing & shrug
+            const leftShoulder = vrm.humanoid.getNormalizedBoneNode('leftShoulder');
+            if (leftShoulder) {
+                leftShoulder.rotation.z = postureCurrents.shoulderL + Math.sin(t * 1.6) * 0.003;
+            }
+            const rightShoulder = vrm.humanoid.getNormalizedBoneNode('rightShoulder');
+            if (rightShoulder) {
+                rightShoulder.rotation.z = postureCurrents.shoulderR - Math.sin(t * 1.6) * 0.003;
+            }
+
+            // Natural Standing / Resting Pose with Speech Gesturing
             const leftUpperArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
             if (leftUpperArm) {
-                leftUpperArm.rotation.z = 1.35 + Math.sin(t * 1.6) * 0.015; // arms down, gentle breathing sway
-                leftUpperArm.rotation.x = 0.05;
-                leftUpperArm.rotation.y = -0.05;
+                const armGestureZ = isSpeaking ? -0.15 - Math.sin(t * 2.5) * 0.06 * voiceAmp : 0;
+                const armGestureX = isSpeaking ? 0.12 + Math.cos(t * 2.0) * 0.05 * voiceAmp : 0;
+                leftUpperArm.rotation.z = 1.35 + Math.sin(t * 1.6) * 0.015 + postureCurrents.armLZ + armGestureZ;
+                leftUpperArm.rotation.x = 0.05 + postureCurrents.armLX + armGestureX;
+                leftUpperArm.rotation.y = -0.05 + postureCurrents.armLY;
             }
             const rightUpperArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
             if (rightUpperArm) {
-                rightUpperArm.rotation.z = -1.35 - Math.sin(t * 1.6) * 0.015; // arms down, gentle breathing sway
-                rightUpperArm.rotation.x = 0.05;
-                rightUpperArm.rotation.y = 0.05;
+                const armGestureZ = isSpeaking ? 0.15 + Math.sin(t * 2.5 + 0.5) * 0.06 * voiceAmp : 0;
+                const armGestureX = isSpeaking ? 0.12 + Math.cos(t * 2.0 + 0.5) * 0.05 * voiceAmp : 0;
+                rightUpperArm.rotation.z = -1.35 - Math.sin(t * 1.6) * 0.015 + postureCurrents.armRZ + armGestureZ;
+                rightUpperArm.rotation.x = 0.05 + postureCurrents.armRX + armGestureX;
+                rightUpperArm.rotation.y = 0.05 + postureCurrents.armRY;
             }
             const leftLowerArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
             if (leftLowerArm) {
-                leftLowerArm.rotation.y = -0.3 + Math.sin(t * 1.6) * 0.01; // slightly bent inward
+                const elbowGesture = isSpeaking ? -0.15 - Math.sin(t * 2.2) * 0.08 * voiceAmp : 0;
+                leftLowerArm.rotation.y = -0.3 + Math.sin(t * 1.6) * 0.01 + elbowGesture;
             }
             const rightLowerArm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
             if (rightLowerArm) {
-                rightLowerArm.rotation.y = 0.3 - Math.sin(t * 1.6) * 0.01; // slightly bent inward
-            }
-            const spine = vrm.humanoid.getNormalizedBoneNode('spine');
-            if (spine) {
-                spine.rotation.x = 0.03 + Math.sin(t * 1.6) * 0.005;
+                const elbowGesture = isSpeaking ? 0.15 + Math.sin(t * 2.2 + 0.5) * 0.08 * voiceAmp : 0;
+                rightLowerArm.rotation.y = 0.3 - Math.sin(t * 1.6) * 0.01 + elbowGesture;
             }
 
-            // C. LookAt Eye Tracking logic
             // C. LookAt Eye Tracking logic (positive Z coordinate facing front)
             const timeSinceLastMouse = t - lastMouseMoveTime;
             if (timeSinceLastMouse < 3.0) {
-                // Track mouse smoothly (swapped X for correct mirrored look, Z to positive)
+                // Track mouse smoothly
                 const targetX = -mouse.x * 2.5;
                 const targetY = 1.35 + mouse.y * 1.5;
                 lookAtTarget.position.x += (targetX - lookAtTarget.position.x) * 0.1;
@@ -553,7 +663,6 @@
             currentMouthOpen += (targetMouthOpen - currentMouthOpen) * Math.min(1, 24.0 * delta); // Very fast responsive lerp
             
             if (currentMouthOpen > 0.04) {
-                // Dynamic Syllable shaping using high frequency modulation
                 const aaWeight = currentMouthOpen * (0.55 + Math.sin(t * 14) * 0.25);
                 const eeWeight = currentMouthOpen * (0.20 + Math.cos(t * 11) * 0.15);
                 const ohWeight = currentMouthOpen * (0.15 + Math.sin(t * 8) * 0.10);
@@ -713,6 +822,10 @@
                 expressionTargets[emotion] = 0.85;
             }
             subtitle.innerText = replyText;
+
+            // Trigger beautiful procedural nod of acknowledgement!
+            isNodding = true;
+            nodTimer = 0;
 
             // Start highly precise time-domain RMS lip sync interval
             if (speechInterval) clearInterval(speechInterval);
