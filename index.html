@@ -3,135 +3,463 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>緋雪 AI 虛擬客服 | 3D Avatar</title>
+    <title>緋雪 AI 虛擬人客服 | Premium Digital Double</title>
     <style>
-        body { margin: 0; background: #050508; overflow: hidden; font-family: 'Noto Sans TC', sans-serif; color: white; }
-        #avatar-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a24 0%, #000 100%); }
-        #ui-layer { position: absolute; bottom: 0; width: 100%; pointer-events: none; }
-        #subtitle-box { width: 100%; text-align: center; font-size: 1.6rem; text-shadow: 0 2px 4px rgba(0,0,0,0.9); padding: 2rem 0; min-height: 3rem; color: #fff; letter-spacing: 1px; }
-        #input-area { pointer-events: auto; width: 80%; max-width: 600px; margin: 0 auto; display: flex; gap: 10px; padding-bottom: 2rem; }
-        #user-input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 1rem; backdrop-filter: blur(10px); transition: 0.3s; }
-        #user-input:focus { border-color: #8b5cf6; background: rgba(255,255,255,0.12); }
-        #send-btn { background: #8b5cf6; border: none; color: white; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
-        #send-btn:hover { background: #7c3aed; }
-        #status-badge { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); display: flex; align-items: center; gap: 8px; }
-        .dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981; }
-        #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; color: #888; }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;700&display=swap');
+
+        body {
+            margin: 0;
+            background: #030308;
+            overflow: hidden;
+            font-family: 'Outfit', 'Noto Sans TC', sans-serif;
+            color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #avatar-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: radial-gradient(circle at center, #0f0b21 0%, #020205 100%);
+        }
+
+        #avatar-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Glassmorphism UI Layer */
+        #ui-layer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 3rem 0;
+            background: linear-gradient(to top, rgba(2, 2, 5, 0.95) 0%, rgba(2, 2, 5, 0.5) 60%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #subtitle-box {
+            width: 90%;
+            max-width: 650px;
+            text-align: center;
+            font-size: 1.35rem;
+            font-weight: 300;
+            line-height: 1.6;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(139, 92, 246, 0.4), 0 2px 4px rgba(0, 0, 0, 0.9);
+            margin-bottom: 2.2rem;
+            padding: 1.2rem 2rem;
+            background: rgba(10, 10, 18, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            backdrop-filter: blur(20px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            letter-spacing: 0.8px;
+            pointer-events: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        #input-area {
+            pointer-events: auto;
+            width: 90%;
+            max-width: 580px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        #user-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            padding: 14px 24px;
+            border-radius: 30px;
+            outline: none;
+            font-size: 1rem;
+            backdrop-filter: blur(24px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+            font-family: inherit;
+        }
+
+        #user-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        #user-input:focus {
+            border-color: rgba(139, 92, 246, 0.7);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.3);
+        }
+
+        #send-btn {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            border: none;
+            color: white;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        #send-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        #send-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+            filter: brightness(1.15);
+        }
+
+        #send-btn:active {
+            transform: scale(0.95);
+        }
+
+        #mic-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #c084fc;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(24px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #mic-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        #mic-btn:hover {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            transform: translateY(-2px) scale(1.05);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(139, 92, 246, 0.35);
+        }
+
+        #mic-btn.listening {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            border-color: #f87171;
+            color: white;
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { transform: scale(1.06); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Status & Interaction Badges */
+        #status-badge, #interaction-badge {
+            position: absolute;
+            top: 24px;
+            background: rgba(10, 10, 18, 0.5);
+            padding: 10px 18px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+            letter-spacing: 0.5px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        #status-badge { left: 24px; }
+        #interaction-badge { right: 24px; color: #c084fc; font-weight: 300; }
+
+        .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+        .dot.green { background: #10b981; color: #10b981; }
+        .dot.red { background: #ef4444; color: #ef4444; }
+        .dot.yellow { background: #f59e0b; color: #f59e0b; }
+
+        /* Loading / Error States */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: #c084fc;
+            text-align: center;
+            z-index: 5;
+            letter-spacing: 2px;
+            animation: fadeInOut 2s infinite ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        #error-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            padding: 24px;
+            border-radius: 16px;
+            max-width: 500px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        #error-box h3 { color: #ef4444; margin: 0 0 12px; font-weight: 600; }
+        #error-box pre { color: #e5e7eb; font-size: 0.8rem; text-align: left; overflow: auto; max-height: 200px; }
     </style>
 </head>
 <body>
 
-<div id="avatar-container"></div>
-<div id="status-badge"><div class="dot"></div> Online | VoxCPM Local</div>
+<div id="avatar-container">
+    <div id="loading">載入 3D 虛擬人模型中...</div>
+    <div id="error-box"><h3>載入失敗</h3><pre id="error-msg"></pre></div>
+</div>
+
+<div id="status-badge"><div class="dot yellow" id="status-dot"></div> <span id="status-text">載入中...</span></div>
+<div id="interaction-badge">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 1px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span>拖曳旋轉 3D 人物 | 支援 OpenLess & 麥克風</span>
+</div>
 
 <div id="ui-layer">
     <div id="subtitle-box">老公～歡迎回來！今天想聊什麼呢？</div>
     <div id="input-area">
-        <input type="text" id="user-input" placeholder="輸入訊息或按 OpenLess 快捷鍵..." autofocus>
-        <button id="send-btn">發送</button>
+        <button id="mic-btn" title="開啟語音對話">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+        </button>
+        <input type="text" id="user-input" placeholder="輸入訊息或按 OpenLess 快捷鍵語音輸入..." autofocus>
+        <button id="send-btn" title="發送訊息">
+            <svg viewBox="0 0 24 24">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+        </button>
     </div>
 </div>
 
-<!-- Three.js & VRM via ES Modules -->
 <script type="importmap">
 {
     "imports": {
         "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
         "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-        "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
+        "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@3.0.0/lib/three-vrm.module.js"
     }
+}
 </script>
 
 <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 
     const container = document.getElementById('avatar-container');
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const loadingEl = document.getElementById('loading');
+    const errorBox = document.getElementById('error-box');
+    const errorMsg = document.getElementById('error-msg');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    function setStatus(color, text) {
+        statusDot.className = 'dot ' + color;
+        statusText.textContent = text;
+    }
+
+    // 1. Renderer Setup (High Quality, Color Management)
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.25;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 1.2, 2.5);
-    camera.lookAt(0, 1.1, 0);
+    
+    // Camera
+    const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.45, -1.35); // Focus closer on head and shoulders
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    dirLight.position.set(2, 2, 5); scene.add(dirLight);
-    const rimLight = new THREE.DirectionalLight(0x8b5cf6, 1.0); 
-    rimLight.position.set(-3, 2, -2); scene.add(rimLight);
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 + 0.1; // limits rotating below floor
+    controls.minDistance = 0.5;
+    controls.maxDistance = 5.0;
+    controls.target.set(0, 1.4, 0); // Target face level
+    controls.update();
 
-    let vrm = null;
-    let avatarGroup = null;
-    let mouthMesh = null;
-    let isVRM = false;
+    // 2. High-End Studio Lighting System
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9)); // Soft base fill
+    
+    // Front Key Light (Warm, slightly from the side)
+    const keyLight = new THREE.DirectionalLight(0xfff5ea, 2.0);
+    keyLight.position.set(1.5, 2.5, -4);
+    scene.add(keyLight);
 
-    // Load VRM Model
-    const loader = new GLTFLoader();
-    loader.crossOrigin = 'anonymous';
-    loader.register((parser) => new VRMLoaderPlugin(parser));
-    const modelUrl = './model.vrm';
+    // Front Fill Light (Cool, opposite side to balance shadows)
+    const fillLight = new THREE.DirectionalLight(0xeaf8ff, 0.8);
+    fillLight.position.set(-1.5, 1.5, -4);
+    scene.add(fillLight);
 
-    loader.load(modelUrl, (gltf) => {
-        vrm = gltf.userData.vrm;
-        VRMUtils.rotateVRM0(vrm); 
-        scene.add(vrm.scene);
-        isVRM = true;
-        document.getElementById('subtitle-box').innerText = "老公～歡迎回來！今天想聊什麼呢？";
-        console.log('VRM Loaded Successfully');
-    }, (p) => {}, (err) => {
-        console.warn('VRM load failed, falling back to procedural avatar.', err);
-        createProceduralAvatar();
+    // Dynamic Rim Neon Light (Rich saturated violet from behind)
+    const rimLight = new THREE.DirectionalLight(0xa78bfa, 3.2); // Intense Lavender Glow
+    rimLight.position.set(-2.0, 2.2, 3);
+    scene.add(rimLight);
+
+    // Helper target to ensure lookAt operates accurately
+    const lookAtTarget = new THREE.Object3D();
+    scene.add(lookAtTarget);
+    lookAtTarget.position.set(0, 1.4, -5.0); // Facing forward
+
+    // 3. Floating Dust Particles System (Magical micro-space)
+    const particleCount = 120;
+    const particleGeo = new THREE.BufferGeometry();
+    const posArray = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+        posArray[i] = (Math.random() - 0.5) * 4;       // x
+        posArray[i+1] = Math.random() * 2.8;            // y (floor to overhead)
+        posArray[i+2] = (Math.random() - 0.5) * 4;     // z
+    }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+    const particleMat = new THREE.PointsMaterial({
+        size: 0.025,
+        color: 0xc084fc,
+        transparent: true,
+        opacity: 0.5,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
     });
 
-    function createProceduralAvatar() {
-        avatarGroup = new THREE.Group();
-        scene.add(avatarGroup);
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
 
-        // Head
-        const headGeo = new THREE.SphereGeometry(0.6, 32, 32);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0d0, roughness: 0.3, metalness: 0.1 });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 1.1;
-        avatarGroup.add(head);
+    // 4. VRM Model Loading & Setup
+    let vrm = null;
+    let isVRM = false;
 
-        // Hair
-        const hairGeo = new THREE.SphereGeometry(0.65, 32, 32, 0, 6.3, 0, 1.5);
-        const hairMat = new THREE.MeshStandardMaterial({ color: 0x2a1b38, roughness: 0.8 });
-        const hair = new THREE.Mesh(hairGeo, hairMat);
-        hair.position.y = 1.15;
-        avatarGroup.add(hair);
+    // Expressions target weighting for LERP transitions
+    const expressionTargets = {
+        happy: 0,
+        sad: 0,
+        angry: 0,
+        surprised: 0,
+        relaxed: 0
+    };
+    const expressionCurrents = {
+        happy: 0,
+        sad: 0,
+        angry: 0,
+        surprised: 0,
+        relaxed: 0
+    };
 
-        // Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.08, 16, 16);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x444444 });
-        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-        leftEye.position.set(-0.2, 1.15, 0.5);
-        avatarGroup.add(leftEye);
-        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-        rightEye.position.set(0.2, 1.15, 0.5);
-        avatarGroup.add(rightEye);
+    // Auto natural blinking vars
+    let blinkTimer = 0;
+    let nextBlinkTime = 2.5 + Math.random() * 4.0;
+    const blinkDuration = 0.12;
+    let isBlinking = false;
+    let blinkProgress = 0;
 
-        // Mouth (Lip-sync target)
-        const mouthGeo = new THREE.SphereGeometry(0.1, 16, 16);
-        const mouthMat = new THREE.MeshBasicMaterial({ color: 0xcc3333 });
-        mouthMesh = new THREE.Mesh(mouthGeo, mouthMat);
-        mouthMesh.position.set(0, 0.85, 0.5);
-        mouthMesh.scale.set(1.5, 1, 1);
-        avatarGroup.add(mouthMesh);
+    // Mouse Tracking setup
+    const mouse = new THREE.Vector2();
+    let isMouseMoving = false;
+    let lastMouseMoveTime = 0;
+
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+
+    loader.load('./model.vrm', (gltf) => {
+        vrm = gltf.userData.vrm;
+        if (vrm) {
+            VRMUtils.removeUnnecessaryVertices(vrm.scene);
+            VRMUtils.rotateVRM0(vrm);
+            
+            // Adjust position
+            vrm.scene.position.set(0, 0, 0);
+            scene.add(vrm.scene);
+            isVRM = true;
+
+            // Anchor lookAt component
+            vrm.lookAt.target = lookAtTarget;
+
+            loadingEl.style.display = 'none';
+            setStatus('green', 'Online | VRM Loaded');
+            console.log('[System] AliciaSolid VRM Loaded Successfully.');
+        } else {
+            showError('Model file loaded but VRM parser returned null.');
+        }
+    }, undefined, (err) => {
+        console.error('[Error] VRM load failed:', err);
+        showError('VRM 模型加載失敗，請確認 model.vrm 檔案存在且完整。 \n' + err.stack);
+    });
+
+    function showError(msg) {
+        loadingEl.style.display = 'none';
+        errorBox.style.display = 'block';
+        errorMsg.textContent = msg;
+        setStatus('red', 'Offline / Load Fail');
     }
 
-    // Animation Loop
+    // 5. Animation Loop
     const clock = new THREE.Clock();
-    let targetMouthOpen = 0;
     let currentMouthOpen = 0;
+    let targetMouthOpen = 0;
 
     function animate() {
         requestAnimationFrame(animate);
@@ -139,116 +467,262 @@
         const t = clock.elapsedTime;
 
         if (isVRM && vrm) {
+            // A. Update VRM solver
             vrm.update(delta);
-            vrm.scene.position.y = Math.sin(t * 1.5) * 0.02;
-            vrm.scene.rotation.y = Math.sin(t * 0.5) * 0.1;
-        } else if (avatarGroup) {
-            avatarGroup.position.y = Math.sin(t * 1.5) * 0.02;
-            avatarGroup.rotation.y = Math.sin(t * 0.5) * 0.1;
-            
-            // Smooth mouth
-            currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.2;
-            if(mouthMesh) {
-                mouthMesh.scale.y = 0.2 + currentMouthOpen * 3;
-                mouthMesh.position.z = 0.5 - currentMouthOpen * 0.1;
+
+            // B. Idle motion (Gentle swaying + breathing)
+            vrm.scene.position.y = Math.sin(t * 1.6) * 0.006;
+            const chest = vrm.humanoid.getNormalizedBoneNode('chest');
+            if (chest) {
+                chest.rotation.z = Math.sin(t * 1.8) * 0.008;
+                chest.rotation.x = (Math.sin(t * 1.2) * 0.005) + 0.01;
             }
+
+            // C. LookAt Eye Tracking logic
+            const timeSinceLastMouse = t - lastMouseMoveTime;
+            if (timeSinceLastMouse < 3.0) {
+                // Track mouse smoothly
+                const targetX = mouse.x * 2.5;
+                const targetY = 1.4 + mouse.y * 1.5;
+                lookAtTarget.position.x += (targetX - lookAtTarget.position.x) * 0.1;
+                lookAtTarget.position.y += (targetY - lookAtTarget.position.y) * 0.1;
+                lookAtTarget.position.z = -3.5;
+            } else {
+                // Fallback: Gaze gently at the camera
+                lookAtTarget.position.x += (camera.position.x - lookAtTarget.position.x) * 0.08;
+                lookAtTarget.position.y += (camera.position.y - lookAtTarget.position.y) * 0.08;
+                lookAtTarget.position.z += (camera.position.z - lookAtTarget.position.z) * 0.08;
+            }
+
+            // D. Dynamic Smooth Expression Transitions (LERP)
+            for (const key in expressionTargets) {
+                expressionCurrents[key] += (expressionTargets[key] - expressionCurrents[key]) * Math.min(1, 5.0 * delta);
+                vrm.expressionManager.setValue(key, expressionCurrents[key]);
+            }
+
+            // E. Natural Random Blinking
+            blinkTimer += delta;
+            if (blinkTimer >= nextBlinkTime && !isBlinking) {
+                isBlinking = true;
+                blinkTimer = 0;
+                blinkProgress = 0;
+                nextBlinkTime = 2.0 + Math.random() * 5.0;
+            }
+
+            if (isBlinking) {
+                blinkProgress += delta / blinkDuration;
+                if (blinkProgress >= 1.0) {
+                    isBlinking = false;
+                    vrm.expressionManager.setValue('blink', 0);
+                } else {
+                    const blinkVal = Math.sin(blinkProgress * Math.PI);
+                    vrm.expressionManager.setValue('blink', blinkVal);
+                }
+            }
+
+            // F. Lip Sync mouth amplitude lerping
+            currentMouthOpen += (targetMouthOpen - currentMouthOpen) * Math.min(1, 15.0 * delta);
+            vrm.expressionManager.setValue('aa', currentMouthOpen);
         }
+
+        // G. Animate particle floatation
+        if (particles) {
+            const positions = particles.geometry.attributes.position.array;
+            for (let i = 1; i < particleCount * 3; i += 3) {
+                positions[i] += Math.sin(t * 0.5 + i) * 0.0006; // Soft vertical waves
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.rotation.y = t * 0.015; // Slow rotation
+        }
+
+        // H. Render & Control Update
+        controls.update();
         renderer.render(scene, camera);
     }
     animate();
 
-    // --- Audio & Logic ---
+    // 6. Interactive Mouse Movement Tracking
+    window.addEventListener('mousemove', (event) => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        lastMouseMoveTime = clock.elapsedTime;
+    });
+
+    // 7. Robust Audio context, stream generator, and Safe Lip-Sync
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
+    analyser.fftSize = 128;
+    analyser.smoothingTimeConstant = 0.6;
+    let speechInterval = null;
 
     async function startConversation(userText) {
         const input = document.getElementById('user-input');
         const subtitle = document.getElementById('subtitle-box');
         input.value = '';
-        subtitle.innerText = "💭 思考中...";
+        subtitle.innerText = '💭 思考中...';
         
-        if (isVRM && vrm) vrm.expressionManager.setValue('aa', 0);
-        else targetMouthOpen = 0;
+        // Reset mouth shapes and sentiment expressions
+        targetMouthOpen = 0;
+        for (const key in expressionTargets) {
+            expressionTargets[key] = 0;
+        }
 
         try {
-            // 1. Get Brain Response
+            // Fetch response from server
             const res = await fetch(`/v1/chat/reply?text=${encodeURIComponent(userText)}`);
             const data = await res.json();
             const replyText = data.reply;
-
-            // 2. Speak
+            const emotion = data.expression || 'relaxed';
+            
+            // Set dynamic visual sentiment!
+            if (expressionTargets.hasOwnProperty(emotion)) {
+                expressionTargets[emotion] = 0.85; // Set emotional key
+            }
             subtitle.innerText = replyText;
+
+            // Trigger VoxCPM TTS Audio Speech
             const ttsRes = await fetch('/v1/audio/speech', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: replyText, style: 'sweet', stream: true })
             });
 
+            // Read the binary stream chunks safely
             const reader = ttsRes.body.getReader();
-            let chunks = []; let totalLength = 0;
+            const chunks = []; 
+            let totalLength = 0;
 
-            while(true) {
+            while (true) {
                 const { done, value } = await reader.read();
-                if(done) break;
-                chunks.push(value); totalLength += value.length;
+                if (done) break;
+                chunks.push(value); 
+                totalLength += value.length;
             }
 
-            const floatData = new Float32Array(totalLength / 4);
-            let offset = 0;
+            // SAFE Uint8Array byte-merging to prevent alignment / RangeError crashes
+            const mergedBytes = new Uint8Array(totalLength);
+            let byteOffset = 0;
             for (const chunk of chunks) {
-                const f = new Float32Array(chunk.buffer, chunk.byteOffset, chunk.byteLength / 4);
-                floatData.set(f, offset); offset += f.length;
+                mergedBytes.set(chunk, byteOffset);
+                byteOffset += chunk.length;
             }
 
+            // Create aligned Float32Array on the fully merged buffer
+            const floatData = new Float32Array(mergedBytes.buffer);
+
+            // Construct audio buffer with exact samples
             const buffer = audioCtx.createBuffer(1, floatData.length, 48000);
             buffer.getChannelData(0).set(floatData);
 
             const source = audioCtx.createBufferSource();
             source.buffer = buffer;
-            source.connect(analyser); analyser.connect(audioCtx.destination);
+            source.connect(analyser); 
+            analyser.connect(audioCtx.destination);
+            
+            // Resume Audio Context if suspended by browser security
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            
             source.start();
 
-            // 3. Lip-Sync Loop
+            // Frequency volume tracking for real-time lip sync
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const interval = setInterval(() => {
+            if (speechInterval) clearInterval(speechInterval);
+            
+            speechInterval = setInterval(() => {
                 analyser.getByteFrequencyData(dataArray);
-                const avg = dataArray.reduce((a,b)=>a+b,0) / dataArray.length;
-                const open = Math.min(1, avg / 60);
-
-                if (isVRM && vrm) {
-                    vrm.expressionManager.setValue('aa', open);
-                } else {
-                    targetMouthOpen = open;
-                }
-            }, 50);
+                const avgVolume = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
+                // Map the frequency energy average smoothly to a range of 0.0 - 0.95 mouth opening
+                targetMouthOpen = Math.min(0.95, avgVolume / 45);
+            }, 30);
 
             source.onended = () => {
-                clearInterval(interval);
-                if (isVRM && vrm) {
-                    vrm.expressionManager.setValue('aa', 0);
-                } else {
-                    targetMouthOpen = 0;
+                clearInterval(speechInterval);
+                targetMouthOpen = 0;
+                // Transition emotional expression back to relaxed
+                for (const key in expressionTargets) {
+                    expressionTargets[key] = 0;
                 }
+                expressionTargets.relaxed = 0.45;
             };
 
         } catch (err) {
-            subtitle.innerText = "連線錯誤...";
-            console.error(err);
+            subtitle.innerText = '連線錯誤，請確認 API 服務是否啟動...';
+            console.error('[System Error]', err);
+            setStatus('red', 'Connection Error');
         }
     }
 
-    // --- Event Listeners ---
+    // 8. Dual Action inputs (Text click + Enter compatibility with OpenLess)
     document.getElementById('send-btn').onclick = () => {
-        const t = document.getElementById('user-input').value;
-        if(t) startConversation(t);
+        const text = document.getElementById('user-input').value.trim();
+        if (text) startConversation(text);
     };
+
     document.getElementById('user-input').onkeypress = (e) => {
-        if(e.key === 'Enter') {
-            const t = e.target.value;
-            if(t) startConversation(t);
+        if (e.key === 'Enter') {
+            const text = e.target.value.trim();
+            if (text) startConversation(text);
         }
     };
 
+    // 9. Web Speech API Microphone Integration
+    const micBtn = document.getElementById('mic-btn');
+    let isListening = false;
+    let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'zh-TW';
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            setStatus('yellow', 'Listening...');
+            document.getElementById('subtitle-box').innerText = '🎤 正在聽你說話中... 請說話';
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            if (isVRM) setStatus('green', 'Online | VRM Loaded');
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            console.log('[Mic Input]', transcript);
+            document.getElementById('user-input').value = transcript;
+            startConversation(transcript);
+        };
+
+        recognition.onerror = (event) => {
+            console.error('[Speech Recognition Error]', event.error);
+            document.getElementById('subtitle-box').innerText = '🎤 語音辨識出現了些問題...';
+            setStatus('red', 'Speech Error: ' + event.error);
+        };
+
+        micBtn.onclick = () => {
+            if (isListening) {
+                recognition.stop();
+            } else {
+                // Ensure audio context is unlocked
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                recognition.start();
+            }
+        };
+    } else {
+        // If not supported natively in this browser, we hide and alert log
+        micBtn.style.display = 'none';
+        console.warn('[System Warning] Web Speech API is not supported in this browser.');
+    }
+
+    // 10. Smooth Window resizing
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();

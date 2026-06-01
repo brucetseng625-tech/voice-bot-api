@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import tempfile
 import os
@@ -11,6 +12,9 @@ import random
 from voxcpm import VoxCPM
 
 app = FastAPI(title="VoxCPM Voice Bot API", description="3D Virtual Human Agent")
+
+# Serve local JS libraries
+app.mount("/libs", StaticFiles(directory="libs"), name="libs")
 
 # Global model instance
 model = None
@@ -31,27 +35,29 @@ def get_ai_response(user_text):
     
     # Greetings
     if any(x in text for x in ["早安", "早啊", "morning"]):
-        return random.choice([
+        reply = random.choice([
             "早安呀～老公今天也要加油喔！我會想你的～",
             "早安！睜開眼就能聽到老公的聲音，真開心～",
             "早安呀～快點起床來陪我嘛～"
         ])
+        return reply, "happy"
     
     # Jokes
     if "笑話" in text or "funny" in text:
-        return random.choice([
+        reply = random.choice([
             "笑話喔... 那你知道為什麼超人要穿緊身衣嗎？因為救人要『緊』呀～呵呵～",
             "講個笑話... 有一天小明問媽媽：「媽，我是不是傻？」媽媽說：「寶貝，不要問這種傻問題～」哈哈～",
             "老公想聽笑話？那我說一個：為什麼海綿寶寶不會生病？因為他有強力的免疫力... 還有蟹老闆的錢～嘿嘿～"
         ])
+        return reply, "happy"
     
     # Flirting/Sweet
     if any(x in text for x in ["愛", "喜歡", "甜", "可愛"]):
-        return "真的嗎？只要老公喜歡，我怎麼樣都可以啦～"
+        return "真的嗎？只要老公喜歡，我怎麼樣都可以啦～", "happy"
     
     # Angry/Scolding
     if any(x in text for x in ["笨", "蠢", "幹", "滾"]):
-        return "嗚... 對不起嘛... 老公不要生氣了好不好？我會乖乖聽話的..."
+        return "嗚... 對不起嘛... 老公不要生氣了好不好？我會乖乖聽話的...", "sad"
     
     # Default "Virtual Assistant" responses
     defaults = [
@@ -61,7 +67,7 @@ def get_ai_response(user_text):
         "那... 我們接下來要做什麼呀？",
         "老公說什麼都對啦～"
     ]
-    return random.choice(defaults)
+    return random.choice(defaults), "relaxed"
 
 class TTSRequest(BaseModel):
     text: str
@@ -114,8 +120,9 @@ async def generate_speech(request: TTSRequest):
 
 @app.get("/v1/chat/reply")
 async def get_reply(text: str):
-    """Returns the smart text response"""
-    return {"reply": get_ai_response(text)}
+    """Returns the smart text response and expression"""
+    reply, expression = get_ai_response(text)
+    return {"reply": reply, "expression": expression}
 
 @app.get("/")
 async def index():
