@@ -124,6 +124,10 @@ async def get_reply(text: str):
     reply, expression = get_ai_response(text)
     return {"reply": reply, "expression": expression}
 
+@app.get("/model.vrm")
+async def get_model_vrm():
+    return FileResponse("model.vrm")
+
 @app.get("/")
 async def index():
     return FileResponse("index.html")
