@@ -592,28 +592,31 @@
             // Natural Standing / Resting Pose with Speech Gesturing
             const leftUpperArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
             if (leftUpperArm) {
-                const armGestureZ = isSpeaking ? -0.15 - Math.sin(t * 2.5) * 0.06 * voiceAmp : 0;
-                const armGestureX = isSpeaking ? 0.12 + Math.cos(t * 2.0) * 0.05 * voiceAmp : 0;
+                // Base lift when speaking is -0.30 rad. Waving amplitude is 0.28 rad.
+                // Scaled by (0.3 + voiceAmp * 0.7) to ensure significant movement even at low volumes.
+                const armGestureZ = isSpeaking ? -0.30 - Math.sin(t * 2.2) * 0.28 * (0.3 + voiceAmp * 0.7) : 0;
+                const armGestureX = isSpeaking ? 0.35 + Math.cos(t * 1.8) * 0.22 * (0.3 + voiceAmp * 0.7) : 0;
                 leftUpperArm.rotation.z = 1.35 + Math.sin(t * 1.6) * 0.015 + postureCurrents.armLZ + armGestureZ;
                 leftUpperArm.rotation.x = 0.05 + postureCurrents.armLX + armGestureX;
                 leftUpperArm.rotation.y = -0.05 + postureCurrents.armLY;
             }
             const rightUpperArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
             if (rightUpperArm) {
-                const armGestureZ = isSpeaking ? 0.15 + Math.sin(t * 2.5 + 0.5) * 0.06 * voiceAmp : 0;
-                const armGestureX = isSpeaking ? 0.12 + Math.cos(t * 2.0 + 0.5) * 0.05 * voiceAmp : 0;
+                const armGestureZ = isSpeaking ? 0.30 + Math.sin(t * 2.2 + 0.5) * 0.28 * (0.3 + voiceAmp * 0.7) : 0;
+                const armGestureX = isSpeaking ? 0.35 + Math.cos(t * 1.8 + 0.5) * 0.22 * (0.3 + voiceAmp * 0.7) : 0;
                 rightUpperArm.rotation.z = -1.35 - Math.sin(t * 1.6) * 0.015 + postureCurrents.armRZ + armGestureZ;
                 rightUpperArm.rotation.x = 0.05 + postureCurrents.armRX + armGestureX;
                 rightUpperArm.rotation.y = 0.05 + postureCurrents.armRY;
             }
             const leftLowerArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
             if (leftLowerArm) {
-                const elbowGesture = isSpeaking ? -0.15 - Math.sin(t * 2.2) * 0.08 * voiceAmp : 0;
+                // Elbow bends outward/inward naturally
+                const elbowGesture = isSpeaking ? -0.45 - Math.sin(t * 2.0) * 0.25 * (0.3 + voiceAmp * 0.7) : 0;
                 leftLowerArm.rotation.y = -0.3 + Math.sin(t * 1.6) * 0.01 + elbowGesture;
             }
             const rightLowerArm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
             if (rightLowerArm) {
-                const elbowGesture = isSpeaking ? 0.15 + Math.sin(t * 2.2 + 0.5) * 0.08 * voiceAmp : 0;
+                const elbowGesture = isSpeaking ? 0.45 + Math.sin(t * 2.0 + 0.5) * 0.25 * (0.3 + voiceAmp * 0.7) : 0;
                 rightLowerArm.rotation.y = 0.3 - Math.sin(t * 1.6) * 0.01 + elbowGesture;
             }
 

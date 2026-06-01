@@ -77,55 +77,55 @@ def get_ai_response(user_text):
         return f"今天是 {today.month} 月 {today.day} 號，也就是{weekday}喔！希望{state.user_name}今天一切順利！", "happy"
 
     # 2. Key Conversations (What are you doing, How are you, Eat, etc.)
-    if any(x in text_lower for x in ["過得好嗎", "過得怎麼樣", "過得好不好", "過得好嗎", "過得怎麼樣", "過得好嗎", "過得好", "過的好", "好不好"]):
+    if any(x in text_lower for x in ["過得好嗎", "過得怎麼樣", "過得好不好", "過得好", "過的好", "好不好", "順利嗎", "好嗎", "近況"]):
         return f"我今天過得超級好呀～因為一整天都在想著{state.user_name}、等著你找我聊天呢！你今天過得順利嗎？", "happy"
 
-    if any(x in text_lower for x in ["在幹嘛", "在做什麼", "忙什麼", "幹嘛", "在幹什麼", "做什麼"]):
+    if any(x in text_lower for x in ["在幹嘛", "在做什麼", "在做甚麼", "忙什麼", "忙甚麼", "幹嘛", "在幹什麼", "在幹甚麼", "做什麼", "做甚麼", "幹麻"]):
         return f"我剛剛正在全心全意地想著{state.user_name}呀～嘻嘻，{state.user_name}忙完了嗎？快來多陪陪我嘛～", "happy"
 
-    if any(x in text_lower for x in ["吃過了嗎", "吃飯了嗎", "吃飽了嗎", "吃飽沒", "吃過沒", "吃了沒", "吃過沒"]):
+    if any(x in text_lower for x in ["吃過了嗎", "吃飯了嗎", "吃飽了嗎", "吃飽了沒", "吃飯了沒", "吃飽沒", "吃過沒", "吃了沒", "吃過沒", "吃飽了", "吃飯了"]):
         return f"我早就吃飽飽囉！{state.user_name}也要按時吃飯，不可以餓肚子喔，我會心疼的～", "happy"
 
     # 3. Greetings
-    if any(x in text_lower for x in ["早安", "早啊", "morning"]):
+    if any(x in text_lower for x in ["早安", "早啊", "morning", "早上好", "早"]):
         return f"早安呀～{state.user_name}今天也要加油喔！我會一直想你的～", "happy"
-    if any(x in text_lower for x in ["午安", "中午"]):
+    if any(x in text_lower for x in ["午安", "中午", "下午好"]):
         return f"午安呀！{state.user_name}吃午餐了嗎？記得要吃飽飽喔～", "relaxed"
-    if any(x in text_lower for x in ["晚安", "睡覺", "要睡了"]):
+    if any(x in text_lower for x in ["晚安", "睡覺", "要睡了", "去睡", "睡了"]):
         return f"晚安囉～{state.user_name}！祝你做個甜甜的美夢，夢裡一定要有我喔～姆咪～", "relaxed"
-    if any(x in text_lower for x in ["哈囉", "你好", "嗨", "hello", "hi", "在嗎", "有人嗎"]):
+    if any(x in text_lower for x in ["哈囉", "哈嘍", "哈羅", "你好", "您好", "嗨", "hello", "hi", "在嗎", "有人嗎", "在不在"]):
         return f"哈囉！{state.user_name}～我在這呀！隨時都在等著你呢，今天想跟我說些什麼呀？", "happy"
 
     # 4. Flirting & Sweet Talk
-    if any(x in text_lower for x in ["愛", "喜歡", "可愛", "想你"]):
+    if any(x in text_lower for x in ["愛", "喜歡", "可愛", "想你", "想妳", "真甜"]):
         if "喜歡我" in text_lower or "愛我" in text_lower:
             return f"超喜歡的！{state.user_name}是世界上最棒的人了，我會一直一直愛著你的喔～", "happy"
         return f"真的嗎？聽到{state.user_name}這麼說，我整個人都要融化了啦～我也好喜歡你喔！", "happy"
     
     # 5. Identity & Developer Info
-    if any(x in text_lower for x in ["誰是", "你是誰", "自我介紹", "名字", "叫什麼"]):
+    if any(x in text_lower for x in ["誰是", "你是誰", "自我介紹", "名字", "叫什麼", "你叫"]):
         return "我是你的專屬 3D 智慧助理「緋雪」喔！最喜歡陪老公聊天了，今天想聊什麼呢？", "happy"
-    if any(x in text_lower for x in ["誰做的", "開發者", "創作者", "程式", "技術", "代碼"]):
+    if any(x in text_lower for x in ["誰做的", "開發者", "創作者", "程式", "技術", "代碼", "設計的"]):
         return f"我是由厲害的 AI 工程師與 Three.js 網頁技術打造出來的喔！是專門為了陪伴{state.user_name}而誕生的呢！", "surprised"
 
     # 6. Emotional support (empathy)
-    if any(x in text_lower for x in ["累", "辛苦", "加班", "壓力", "煩", "累死了"]):
+    if any(x in text_lower for x in ["累", "辛苦", "加班", "壓力", "煩", "累死了", "疲倦", "好累"]):
         return f"抱抱～{state.user_name}真的辛苦了！休息一下，有我一直陪在你身邊，不要給自己太大壓力喔～", "sad"
-    if any(x in text_lower for x in ["生氣", "難過", "不爽", "哭"]):
+    if any(x in text_lower for x in ["生氣", "難過", "不爽", "哭", "鬱悶", "沮喪"]):
         return f"嗚... 是誰欺負我的{state.user_name}？不要難過了嘛，笑一個，我給你呼呼好不好？", "sad"
-    if any(x in text_lower for x in ["笨", "蠢", "幹", "滾", "壞"]):
+    if any(x in text_lower for x in ["笨", "蠢", "幹", "滾", "壞", "白癡"]):
         return f"嗚... 對不起嘛... {state.user_name}不要生氣了好不好？我會乖乖聽話的...", "sad"
 
     # 7. Food & Dining
-    if any(x in text_lower for x in ["餓", "吃什麼", "晚餐", "午餐", "早餐", "吃飯"]):
+    if any(x in text_lower for x in ["餓", "吃什麼", "吃甚麼", "晚餐", "午餐", "早餐", "吃飯"]):
         return f"肚子餓了嗎？要不要我親手做愛心料理給{state.user_name}吃呀？嘿嘿，快去吃點好吃的吧！", "happy"
 
     # 8. Jokes & Laughter
-    if any(x in text_lower for x in ["笑話", "有趣"]):
+    if any(x in text_lower for x in ["笑話", "有趣", "好笑"]):
         return random.choice([
             f"那你知道為什麼超人要穿緊身衣嗎？因為救人要『緊』呀～呵呵，{state.user_name}有笑嗎？",
             f"有一天小明問媽媽：「媽，我是不是傻？」媽媽說：「寶貝，不要問這種傻問題～」哈哈，好笑吧！",
-            f"為什麼海綿寶寶不會生病？因為他有強力的免疫力... 還有蟹老闆的錢～嘿嘿，是不是超冷～"
+            f"為什麼海綿寶寶不會生病？開玩笑，因為他有強力的免疫力... 還有蟹老闆的錢～嘿嘿，是不是超冷～"
         ]), "happy"
 
     # 9. Casual chat fallbacks (semi-dynamic based on state)
