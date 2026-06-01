@@ -591,31 +591,28 @@
         lastMouseMoveTime = clock.elapsedTime;
     });
 
-    // 7. High-Performance Audio Pipeline (Zero-Latency Real-Time Streaming Player)
+    // 7. High-Performance Audio Pipeline (Fully-Buffered Stutter-Free Player)
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
     analyser.smoothingTimeConstant = 0.45;
     
     let speechInterval = null;
-    let nextStartTime = 0;
     const sampleRate = 48000;
-    let leftover = new Uint8Array(0);
     let activeSources = [];
     const timeData = new Float32Array(analyser.fftSize);
+    let currentAbortController = null;
 
     function stopAllAudio() {
         activeSources.forEach(source => {
             try { source.stop(); } catch(e) {}
         });
         activeSources = [];
-        nextStartTime = 0;
-        leftover = new Uint8Array(0);
         targetMouthOpen = 0;
         if (speechInterval) clearInterval(speechInterval);
     }
 
-    function playAudioChunk(float32Array) {
+    function playFullAudio(float32Array) {
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
@@ -628,14 +625,7 @@
         source.connect(analyser);
         analyser.connect(audioCtx.destination);
         
-        const currentTime = audioCtx.currentTime;
-        let startTime = nextStartTime;
-        if (startTime < currentTime) {
-            startTime = currentTime + 0.02; // Safe look-ahead gap to prevent pops
-        }
-        
-        source.start(startTime);
-        nextStartTime = startTime + buffer.duration;
+        source.start(0);
         activeSources.push(source);
         
         source.onended = () => {
@@ -654,42 +644,68 @@
         };
     }
 
-    function processBytes(newBytes) {
-        const combined = new Uint8Array(leftover.length + newBytes.length);
-        combined.set(leftover, 0);
-        combined.set(newBytes, leftover.length);
-        
-        const sampleCount = Math.floor(combined.length / 4);
-        const byteLengthToProcess = sampleCount * 4;
-        
-        const bytesToProcess = combined.subarray(0, byteLengthToProcess);
-        leftover = combined.slice(byteLengthToProcess);
-        
-        if (bytesToProcess.length > 0) {
-            const alignedBytes = new Uint8Array(bytesToProcess.length);
-            alignedBytes.set(bytesToProcess);
-            const floatData = new Float32Array(alignedBytes.buffer);
-            playAudioChunk(floatData);
-        }
-    }
-
     async function startConversation(userText) {
         const input = document.getElementById('user-input');
         const subtitle = document.getElementById('subtitle-box');
         input.value = '';
         subtitle.innerText = '💭 思考中...';
         
-        // Stop currently playing audio queue instantly before starting new conversation
+        // Stop currently playing audio instantly
         stopAllAudio();
+
+        if (currentAbortController) {
+            currentAbortController.abort();
+        }
+        currentAbortController = new AbortController();
+        const signal = currentAbortController.signal;
 
         try {
             // Fetch response from server
-            const res = await fetch(`/v1/chat/reply?text=${encodeURIComponent(userText)}`);
+            const res = await fetch(`/v1/chat/reply?text=${encodeURIComponent(userText)}`, { signal });
             const data = await res.json();
             const replyText = data.reply;
             const emotion = data.expression || 'relaxed';
             
-            // Set dynamic visual sentiment!
+            // Trigger VoxCPM TTS Audio Speech
+            const ttsRes = await fetch('/v1/audio/speech', {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: replyText, style: 'sweet', stream: true }),
+                signal
+            });
+
+            // Read the binary stream chunks safely and buffer everything on client side
+            const reader = ttsRes.body.getReader();
+            const chunks = [];
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (value) {
+                    chunks.push(value);
+                }
+            }
+
+            // Once the entire stream is received, concatenate chunks into a single ArrayBuffer
+            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const mergedUint8 = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+                mergedUint8.set(chunk, offset);
+                offset += chunk.length;
+            }
+
+            // Ensure 4-byte float32 boundary alignment
+            const sampleCount = Math.floor(mergedUint8.length / 4);
+            const cleanLength = sampleCount * 4;
+
+            const alignedBuffer = new ArrayBuffer(cleanLength);
+            const alignedUint8 = new Uint8Array(alignedBuffer);
+            alignedUint8.set(mergedUint8.subarray(0, cleanLength));
+
+            const floatData = new Float32Array(alignedBuffer);
+
+            // Now, synchronously update the subtitle text, set the expression, and trigger the audio
             for (const key in expressionTargets) {
                 expressionTargets[key] = 0;
             }
@@ -698,16 +714,6 @@
             }
             subtitle.innerText = replyText;
 
-            // Trigger VoxCPM TTS Audio Speech
-            const ttsRes = await fetch('/v1/audio/speech', {
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: replyText, style: 'sweet', stream: true })
-            });
-
-            // Read the binary stream chunks safely IN REAL-TIME as they arrive!
-            const reader = ttsRes.body.getReader();
-            
             // Start highly precise time-domain RMS lip sync interval
             if (speechInterval) clearInterval(speechInterval);
             speechInterval = setInterval(() => {
@@ -725,15 +731,13 @@
                 }
             }, 25);
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                // Immediately feed byte chunk to the streaming player queue!
-                processBytes(value);
-            }
+            playFullAudio(floatData);
 
         } catch (err) {
+            if (err.name === 'AbortError') {
+                console.log('[System] Request was aborted by a newer interaction.');
+                return;
+            }
             subtitle.innerText = '連線錯誤，請確認 API 服務是否啟動...';
             console.error('[System Error]', err);
             setStatus('red', 'Connection Error');
