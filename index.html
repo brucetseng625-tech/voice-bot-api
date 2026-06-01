@@ -750,7 +750,7 @@
         if (text) startConversation(text);
     };
 
-    document.getElementById('user-input').onkeypress = (e) => {
+    document.getElementById('user-input').onkeydown = (e) => {
         if (e.key === 'Enter') {
             const text = e.target.value.trim();
             if (text) startConversation(text);
@@ -762,6 +762,7 @@
     let isListening = false;
     let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
+    let speechTriggered = false;
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
@@ -771,6 +772,7 @@
 
         recognition.onstart = () => {
             isListening = true;
+            speechTriggered = false;
             micBtn.classList.add('listening');
             setStatus('yellow', 'Listening...');
             document.getElementById('subtitle-box').innerText = '🎤 正在聽你說話中... 請說話';
@@ -786,12 +788,16 @@
             const transcript = event.results[0][0].transcript;
             console.log('[Mic Input]', transcript);
             document.getElementById('user-input').value = transcript;
+            speechTriggered = true;
             startConversation(transcript);
         };
 
         recognition.onerror = (event) => {
             console.error('[Speech Recognition Error]', event.error);
-            document.getElementById('subtitle-box').innerText = '🎤 語音辨識出現了些問題...';
+            // Only overwrite subtitle if we have not successfully parsed a transcript
+            if (!speechTriggered) {
+                document.getElementById('subtitle-box').innerText = '🎤 語音辨識出現了些問題...';
+            }
             setStatus('red', 'Speech Error: ' + event.error);
         };
 

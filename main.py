@@ -41,8 +41,11 @@ state = ChatState()
 # The Stateful Context-Aware Brain
 def get_ai_response(user_text):
     state.conversation_count += 1
+    # Clean common Chinese and English punctuation to make voice input matching robust
+    import re
     text = user_text.strip()
-    text_lower = text.lower()
+    clean_text = re.sub(r"[。，！？；：、「」（）()!?.,\s]+", "", text)
+    text_lower = clean_text.lower()
     
     # Context-aware name learning
     # e.g., "我叫小明", "我是Bruce", "叫我Bruce", "妳可以叫我小明"
