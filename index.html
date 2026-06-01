@@ -84,7 +84,7 @@
 
 <div class="container">
     <h1>🗣️ Voice Bot API</h1>
-    <p class="subtitle">One-Person Company Edition | Real-time Streaming</p>
+    <p class="subtitle">One-Person Company Edition | Smooth Streaming</p>
 
     <div class="form-group">
         <label>Text to Speak</label>
@@ -122,16 +122,70 @@
 
     let audioCtx = null;
     let nextStartTime = 0;
-    let audioQueue = [];
+    
+    // Buffer accumulation state
+    let audioBufferAccumulator = []; 
+    let accumulatedLength = 0;
+    const BUFFER_THRESHOLD = 9600; // ~0.2s at 48kHz
 
     function initAudio() {
         if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 48000
+            });
         }
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
-        nextStartTime = audioCtx.currentTime + 0.05;
+        nextStartTime = audioCtx.currentTime + 0.1;
+        audioBufferAccumulator = [];
+        accumulatedLength = 0;
+    }
+
+    async function scheduleAccumulated() {
+        if (accumulatedLength === 0) return;
+
+        // Create AudioBuffer
+        const buffer = audioCtx.createBuffer(1, accumulatedLength, 48000);
+        const channelData = buffer.getChannelData(0);
+        
+        let offset = 0;
+        for (const chunk of audioBufferAccumulator) {
+            channelData.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        
+        if (nextStartTime < audioCtx.currentTime) {
+            nextStartTime = audioCtx.currentTime;
+        }
+        source.start(nextStartTime);
+        nextStartTime += buffer.duration;
+
+        // Reset
+        audioBufferAccumulator = [];
+        accumulatedLength = 0;
+    }
+
+    function handleAudioChunk(value) {
+        // Convert Uint8Array to Float32Array
+        const floatData = new Float32Array(value.buffer, value.byteOffset, value.byteLength / 4);
+        
+        audioBufferAccumulator.push(floatData);
+        accumulatedLength += floatData.length;
+
+        // Visualizer
+        const h = Math.min(50, Math.random() * 40 + 10);
+        const idx = Math.floor(Math.random() * 20);
+        bars[idx].style.height = h + 'px';
+
+        // Schedule if buffer is big enough
+        if (accumulatedLength > BUFFER_THRESHOLD) {
+            scheduleAccumulated();
+        }
     }
 
     async function speak() {
@@ -164,42 +218,35 @@
             streamDot.style.background = '#10b981';
 
             const reader = response.body.getReader();
-            const sampleRate = 48000;
-            let barIndex = 0;
 
-            // Loop to read chunks and schedule them immediately
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                // value is Uint8Array, convert to Float32Array
-                const floatData = new Float32Array(value.buffer, value.byteOffset, value.byteLength / 4);
-
-                // Schedule audio buffer immediately
-                const buffer = audioCtx.createBuffer(1, floatData.length, sampleRate);
-                buffer.getChannelData(0).set(floatData);
-
-                const source = audioCtx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioCtx.destination);
-                
-                // Schedule at the correct time
-                if (nextStartTime < audioCtx.currentTime) {
-                    nextStartTime = audioCtx.currentTime;
+                if (value) {
+                    handleAudioChunk(value);
                 }
-                source.start(nextStartTime);
-                nextStartTime += buffer.duration;
-
-                // Update Visualizer
-                const h = Math.min(50, Math.random() * 40 + 10);
-                bars[barIndex % 20].style.height = h + 'px';
-                barIndex++;
             }
 
-            statusText.innerText = "Done.";
-            btn.innerText = "Speak Again";
-            btn.disabled = false;
-            streamDot.style.display = 'none';
+            // Play remaining buffer
+            await scheduleAccumulated();
+            
+            // Wait for audio to finish playing before re-enabling
+            // We calculate when the last source will stop
+            if (nextStartTime > audioCtx.currentTime) {
+                 setTimeout(() => {
+                    statusText.innerText = "Done.";
+                    btn.innerText = "Speak Again";
+                    btn.disabled = false;
+                    streamDot.style.display = 'none';
+                    bars.forEach(b => b.style.height = '4px');
+                 }, (nextStartTime - audioCtx.currentTime) * 1000 + 100);
+            } else {
+                 statusText.innerText = "Done.";
+                 btn.innerText = "Speak Again";
+                 btn.disabled = false;
+                 streamDot.style.display = 'none';
+            }
 
         } catch (err) {
             statusText.innerText = "Error: " + err.message;

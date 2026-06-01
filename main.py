@@ -27,8 +27,8 @@ def get_model():
 
 class TTSRequest(BaseModel):
     text: str
-    style: str = "sweet"  # Default to our favorite preset
-    stream: bool = True   # Default to streaming for better UX
+    style: str = "sweet"
+    stream: bool = True
 
 # Presets Library
 PRESETS = {
@@ -37,8 +37,12 @@ PRESETS = {
     "casual": "(A friendly young woman, natural, bright, energetic, casual speaking pace)"
 }
 
+# Buffer size for streaming (48000Hz * 0.05s = 2400 samples)
+# Yielding larger chunks prevents browser audio glitches
+STREAM_CHUNK_SIZE = 2400 
+
 async def audio_stream_generator(text, style):
-    """Async generator that yields audio chunks from VoxCPM"""
+    """Async generator that yields buffered audio chunks from VoxCPM"""
     try:
         current_model = get_model()
         prefix = PRESETS.get(style, "")
@@ -46,25 +50,36 @@ async def audio_stream_generator(text, style):
         
         print(f"[Stream] Generating audio for: '{text}' (Style: {style})")
         
-        # VoxCPM generate_streaming yields numpy arrays
-        # Note: We need to handle the float32 -> bytes conversion
+        chunk_buffer = np.array([], dtype=np.float32)
+        
         for chunk in current_model.generate_streaming(
             text=full_text,
             cfg_value=2.0,
             inference_timesteps=20
         ):
-            # chunk is a numpy array of float32
-            # Convert to bytes for streaming
-            # 48000Hz, Mono, Float32
-            if isinstance(chunk, np.ndarray):
-                yield chunk.tobytes()
-            elif isinstance(chunk, torch.Tensor):
-                yield chunk.cpu().numpy().tobytes()
+            # Convert to float32 numpy array
+            if isinstance(chunk, torch.Tensor):
+                chunk_np = chunk.cpu().numpy()
+            elif isinstance(chunk, np.ndarray):
+                chunk_np = chunk
+            else:
+                continue
+
+            # Append to buffer
+            chunk_buffer = np.append(chunk_buffer, chunk_np)
             
+            # Yield in blocks
+            while len(chunk_buffer) >= STREAM_CHUNK_SIZE:
+                to_yield = chunk_buffer[:STREAM_CHUNK_SIZE]
+                chunk_buffer = chunk_buffer[STREAM_CHUNK_SIZE:]
+                yield to_yield.tobytes()
+
+        # Yield remainder
+        if len(chunk_buffer) > 0:
+            yield chunk_buffer.tobytes()
+
     except Exception as e:
         print(f"[Error] Stream generation failed: {e}")
-        # We can't yield an error in the middle of a stream easily,
-        # but the connection will close.
         return
 
 @app.post("/v1/audio/speech")
@@ -80,7 +95,6 @@ async def generate_speech(request: TTSRequest):
             }
         )
     else:
-        # Fallback to standard file generation (for testing/download)
         try:
             start_time = time.time()
             current_model = get_model()
@@ -119,7 +133,6 @@ async def index():
 
 if __name__ == "__main__":
     import uvicorn
-    # Allow CORS for local testing if accessed via other ports
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
