@@ -11,6 +11,7 @@
             --primary: #8b5cf6;
             --text: #e2e8f0;
             --text-muted: #94a3b8;
+            --success: #10b981;
         }
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
@@ -44,69 +45,38 @@
             font-size: 0.9rem;
             margin-bottom: 2rem;
         }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
         textarea, select {
-            width: 100%;
-            padding: 0.8rem;
-            background: #0f0f14;
-            border: 1px solid #333;
-            color: white;
-            border-radius: 8px;
-            font-size: 1rem;
-            box-sizing: border-box;
+            width: 100%; padding: 0.8rem; background: #0f0f14; border: 1px solid #333;
+            color: white; border-radius: 8px; font-size: 1rem; box-sizing: border-box;
         }
-        textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
+        textarea:focus, select:focus { outline: none; border-color: var(--primary); }
         button {
-            width: 100%;
-            padding: 1rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: opacity 0.2s;
+            width: 100%; padding: 1rem; background: var(--primary); color: white;
+            border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold;
+            cursor: pointer; transition: opacity 0.2s;
         }
         button:hover { opacity: 0.9; }
-        button:disabled {
-            background: #444;
-            cursor: not-allowed;
-        }
+        button:disabled { background: #444; cursor: not-allowed; }
         .status {
-            margin-top: 1rem;
-            text-align: center;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            height: 1.2rem;
+            margin-top: 1rem; text-align: center; font-size: 0.9rem;
+            color: var(--text-muted); height: 1.2rem; display: flex; justify-content: center; align-items: center; gap: 8px;
         }
         .visualizer {
-            height: 60px;
-            background: #0f0f14;
-            border-radius: 8px;
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
+            height: 60px; background: #0f0f14; border-radius: 8px; margin-top: 1rem;
+            display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
         }
         .bar {
-            width: 4px;
-            background: var(--primary);
-            margin: 0 2px;
-            border-radius: 2px;
-            transition: height 0.1s;
+            width: 4px; background: var(--primary); margin: 0 2px; border-radius: 2px; transition: height 0.05s ease; height: 4px;
+        }
+        .dot {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+            animation: pulse 1s infinite; display: none;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            100% { transform: scale(1.2); opacity: 1; }
         }
     </style>
 </head>
@@ -114,11 +84,11 @@
 
 <div class="container">
     <h1>🗣️ Voice Bot API</h1>
-    <p class="subtitle">One-Person Company Edition | Local Streaming</p>
+    <p class="subtitle">One-Person Company Edition | Real-time Streaming</p>
 
     <div class="form-group">
         <label>Text to Speak</label>
-        <textarea id="textInput" rows="3" placeholder="老公想聽什麼？"></textarea>
+        <textarea id="textInput" rows="3" placeholder="老公想聽什麼？">早安呀～今天也要元氣滿滿喔！</textarea>
     </div>
 
     <div class="form-group">
@@ -132,39 +102,56 @@
 
     <button id="speakBtn" onclick="speak()">Speak Now</button>
     
-    <div class="visualizer" id="visualizer">
-        <!-- Bars will be added dynamically -->
+    <div class="visualizer" id="visualizer"></div>
+    <div class="status" id="status">
+        <div class="dot" id="streamDot"></div>
+        <span id="statusText">Ready</span>
     </div>
-    <div class="status" id="status">Ready</div>
 </div>
 
 <script>
     // Setup Visualizer Bars
     const viz = document.getElementById('visualizer');
+    const bars = [];
     for(let i=0; i<20; i++) {
         const bar = document.createElement('div');
         bar.className = 'bar';
-        bar.style.height = '4px';
         viz.appendChild(bar);
+        bars.push(bar);
     }
 
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let sourceNode = null;
+    let audioCtx = null;
+    let nextStartTime = 0;
+    let audioQueue = [];
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        nextStartTime = audioCtx.currentTime + 0.05;
+    }
 
     async function speak() {
         const text = document.getElementById('textInput').value;
         const style = document.getElementById('styleSelect').value;
         const btn = document.getElementById('speakBtn');
-        const status = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const streamDot = document.getElementById('streamDot');
 
         if (!text) return;
 
         btn.disabled = true;
-        btn.innerText = "Generating & Streaming...";
-        status.innerText = "Connecting to VoxCPM...";
+        btn.innerText = "Streaming...";
+        statusText.innerText = "Connecting...";
+        streamDot.style.display = 'block';
+        streamDot.style.background = '#8b5cf6';
+
+        initAudio();
 
         try {
-            // Fetch the stream
             const response = await fetch('/v1/audio/speech', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -173,68 +160,52 @@
 
             if (!response.ok) throw new Error("API Error");
 
-            status.innerText = "Streaming audio chunks...";
-            
-            // Handle PCM Stream
-            // The API sends raw Float32 PCM data at 48000Hz
+            statusText.innerText = "Receiving & Playing...";
+            streamDot.style.background = '#10b981';
+
             const reader = response.body.getReader();
             const sampleRate = 48000;
-            
-            // We need to buffer chunks and play them
-            // For simplicity in this demo, we will collect all chunks into one big Float32Array
-            // then create an AudioBuffer. 
-            // *Note*: True real-time streaming requires a complex AudioWorklet queue.
-            // This "collect-then-play" is robust for a demo and works instantly once generation finishes.
-            // To make it feel like streaming, we update the UI based on chunk arrival.
-            
-            let chunks = [];
-            let totalLength = 0;
             let barIndex = 0;
-            const bars = document.querySelectorAll('.bar');
 
+            // Loop to read chunks and schedule them immediately
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
+
+                // value is Uint8Array, convert to Float32Array
+                const floatData = new Float32Array(value.buffer, value.byteOffset, value.byteLength / 4);
+
+                // Schedule audio buffer immediately
+                const buffer = audioCtx.createBuffer(1, floatData.length, sampleRate);
+                buffer.getChannelData(0).set(floatData);
+
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
                 
-                chunks.push(value);
-                totalLength += value.length;
-                
-                // Update Visualizer (fake progress based on chunks)
-                const h = Math.random() * 50 + 5;
+                // Schedule at the correct time
+                if (nextStartTime < audioCtx.currentTime) {
+                    nextStartTime = audioCtx.currentTime;
+                }
+                source.start(nextStartTime);
+                nextStartTime += buffer.duration;
+
+                // Update Visualizer
+                const h = Math.min(50, Math.random() * 40 + 10);
                 bars[barIndex % 20].style.height = h + 'px';
                 barIndex++;
             }
 
-            status.innerText = "Decoding & Playing...";
-            
-            // Combine chunks
-            const combined = new Float32Array(totalLength / 4);
-            let offset = 0;
-            for (const chunk of chunks) {
-                // value is Uint8Array, need to interpret as Float32
-                const floatView = new Float32Array(chunk.buffer, chunk.byteOffset, chunk.byteLength / 4);
-                combined.set(floatView, offset);
-                offset += floatView.length;
-            }
-
-            // Play Audio
-            const audioBuffer = audioCtx.createBuffer(1, combined.length, sampleRate);
-            audioBuffer.getChannelData(0).set(combined);
-            
-            if (sourceNode) sourceNode.stop();
-            sourceNode = audioCtx.createBufferSource();
-            sourceNode.buffer = audioBuffer;
-            sourceNode.connect(audioCtx.destination);
-            sourceNode.start();
-
-            status.innerText = "Playing complete.";
-            btn.innerText = "Speak Now";
+            statusText.innerText = "Done.";
+            btn.innerText = "Speak Again";
             btn.disabled = false;
+            streamDot.style.display = 'none';
 
         } catch (err) {
-            status.innerText = "Error: " + err.message;
+            statusText.innerText = "Error: " + err.message;
             btn.innerText = "Retry";
             btn.disabled = false;
+            streamDot.style.display = 'none';
         }
     }
 </script>
