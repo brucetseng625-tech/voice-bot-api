@@ -330,7 +330,7 @@
     
     // Camera
     const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 1.3, -1.85); // Back up camera to frame beautifully at start
+    camera.position.set(0, 1.3, 1.85); // Back up camera to frame beautifully at start (positive Z faces front)
 
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -363,7 +363,7 @@
     // Helper target to ensure lookAt operates accurately
     const lookAtTarget = new THREE.Object3D();
     scene.add(lookAtTarget);
-    lookAtTarget.position.set(0, 1.4, -5.0); // Facing forward
+    lookAtTarget.position.set(0, 1.4, 5.0); // Facing forward (positive Z)
 
     // 3. Floating Dust Particles System (Magical micro-space)
     const particleCount = 120;
@@ -507,14 +507,15 @@
             }
 
             // C. LookAt Eye Tracking logic
+            // C. LookAt Eye Tracking logic (positive Z coordinate facing front)
             const timeSinceLastMouse = t - lastMouseMoveTime;
             if (timeSinceLastMouse < 3.0) {
-                // Track mouse smoothly
-                const targetX = mouse.x * 2.5;
-                const targetY = 1.4 + mouse.y * 1.5;
+                // Track mouse smoothly (swapped X for correct mirrored look, Z to positive)
+                const targetX = -mouse.x * 2.5;
+                const targetY = 1.35 + mouse.y * 1.5;
                 lookAtTarget.position.x += (targetX - lookAtTarget.position.x) * 0.1;
                 lookAtTarget.position.y += (targetY - lookAtTarget.position.y) * 0.1;
-                lookAtTarget.position.z = -3.5;
+                lookAtTarget.position.z = 3.5;
             } else {
                 // Fallback: Gaze gently at the camera
                 lookAtTarget.position.x += (camera.position.x - lookAtTarget.position.x) * 0.08;
@@ -548,19 +549,33 @@
                 }
             }
 
-            // F. Lip Sync mouth amplitude lerping
-            currentMouthOpen += (targetMouthOpen - currentMouthOpen) * Math.min(1, 15.0 * delta);
-            vrm.expressionManager.setValue('aa', currentMouthOpen);
+            // F. Lip Sync organic vowel articulation mixing (aa, ee, oh)
+            currentMouthOpen += (targetMouthOpen - currentMouthOpen) * Math.min(1, 24.0 * delta); // Very fast responsive lerp
+            
+            if (currentMouthOpen > 0.04) {
+                // Dynamic Syllable shaping using high frequency modulation
+                const aaWeight = currentMouthOpen * (0.55 + Math.sin(t * 14) * 0.25);
+                const eeWeight = currentMouthOpen * (0.20 + Math.cos(t * 11) * 0.15);
+                const ohWeight = currentMouthOpen * (0.15 + Math.sin(t * 8) * 0.10);
+                
+                vrm.expressionManager.setValue('aa', aaWeight);
+                vrm.expressionManager.setValue('ee', eeWeight);
+                vrm.expressionManager.setValue('oh', ohWeight);
+            } else {
+                vrm.expressionManager.setValue('aa', 0);
+                vrm.expressionManager.setValue('ee', 0);
+                vrm.expressionManager.setValue('oh', 0);
+            }
         }
 
         // G. Animate particle floatation
         if (particles) {
             const positions = particles.geometry.attributes.position.array;
             for (let i = 1; i < particleCount * 3; i += 3) {
-                positions[i] += Math.sin(t * 0.5 + i) * 0.0006; // Soft vertical waves
+                positions[i] += Math.sin(t * 0.5 + i) * 0.0006;
             }
             particles.geometry.attributes.position.needsUpdate = true;
-            particles.rotation.y = t * 0.015; // Slow rotation
+            particles.rotation.y = t * 0.015;
         }
 
         // H. Render & Control Update
@@ -576,12 +591,87 @@
         lastMouseMoveTime = clock.elapsedTime;
     });
 
-    // 7. Robust Audio context, stream generator, and Safe Lip-Sync
+    // 7. High-Performance Audio Pipeline (Zero-Latency Real-Time Streaming Player)
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 128;
-    analyser.smoothingTimeConstant = 0.6;
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.45;
+    
     let speechInterval = null;
+    let nextStartTime = 0;
+    const sampleRate = 48000;
+    let leftover = new Uint8Array(0);
+    let activeSources = [];
+    const timeData = new Float32Array(analyser.fftSize);
+
+    function stopAllAudio() {
+        activeSources.forEach(source => {
+            try { source.stop(); } catch(e) {}
+        });
+        activeSources = [];
+        nextStartTime = 0;
+        leftover = new Uint8Array(0);
+        targetMouthOpen = 0;
+        if (speechInterval) clearInterval(speechInterval);
+    }
+
+    function playAudioChunk(float32Array) {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        
+        const buffer = audioCtx.createBuffer(1, float32Array.length, sampleRate);
+        buffer.getChannelData(0).set(float32Array);
+        
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        
+        const currentTime = audioCtx.currentTime;
+        let startTime = nextStartTime;
+        if (startTime < currentTime) {
+            startTime = currentTime + 0.02; // Safe look-ahead gap to prevent pops
+        }
+        
+        source.start(startTime);
+        nextStartTime = startTime + buffer.duration;
+        activeSources.push(source);
+        
+        source.onended = () => {
+            const index = activeSources.indexOf(source);
+            if (index > -1) {
+                activeSources.splice(index, 1);
+            }
+            if (activeSources.length === 0) {
+                targetMouthOpen = 0;
+                // Transition emotional expression back to relaxed
+                for (const key in expressionTargets) {
+                    expressionTargets[key] = 0;
+                }
+                expressionTargets.relaxed = 0.45;
+            }
+        };
+    }
+
+    function processBytes(newBytes) {
+        const combined = new Uint8Array(leftover.length + newBytes.length);
+        combined.set(leftover, 0);
+        combined.set(newBytes, leftover.length);
+        
+        const sampleCount = Math.floor(combined.length / 4);
+        const byteLengthToProcess = sampleCount * 4;
+        
+        const bytesToProcess = combined.subarray(0, byteLengthToProcess);
+        leftover = combined.slice(byteLengthToProcess);
+        
+        if (bytesToProcess.length > 0) {
+            const alignedBytes = new Uint8Array(bytesToProcess.length);
+            alignedBytes.set(bytesToProcess);
+            const floatData = new Float32Array(alignedBytes.buffer);
+            playAudioChunk(floatData);
+        }
+    }
 
     async function startConversation(userText) {
         const input = document.getElementById('user-input');
@@ -589,11 +679,8 @@
         input.value = '';
         subtitle.innerText = '💭 思考中...';
         
-        // Reset mouth shapes and sentiment expressions
-        targetMouthOpen = 0;
-        for (const key in expressionTargets) {
-            expressionTargets[key] = 0;
-        }
+        // Stop currently playing audio queue instantly before starting new conversation
+        stopAllAudio();
 
         try {
             // Fetch response from server
@@ -603,8 +690,11 @@
             const emotion = data.expression || 'relaxed';
             
             // Set dynamic visual sentiment!
+            for (const key in expressionTargets) {
+                expressionTargets[key] = 0;
+            }
             if (expressionTargets.hasOwnProperty(emotion)) {
-                expressionTargets[emotion] = 0.85; // Set emotional key
+                expressionTargets[emotion] = 0.85;
             }
             subtitle.innerText = replyText;
 
@@ -615,65 +705,33 @@
                 body: JSON.stringify({ text: replyText, style: 'sweet', stream: true })
             });
 
-            // Read the binary stream chunks safely
+            // Read the binary stream chunks safely IN REAL-TIME as they arrive!
             const reader = ttsRes.body.getReader();
-            const chunks = []; 
-            let totalLength = 0;
+            
+            // Start highly precise time-domain RMS lip sync interval
+            if (speechInterval) clearInterval(speechInterval);
+            speechInterval = setInterval(() => {
+                if (activeSources.length > 0) {
+                    analyser.getFloatTimeDomainData(timeData);
+                    let sumSquares = 0;
+                    for (let i = 0; i < timeData.length; i++) {
+                        sumSquares += timeData[i] * timeData[i];
+                    }
+                    const rms = Math.sqrt(sumSquares / timeData.length);
+                    // Standard conversational speech RMS volume mapping (RMS ranges 0.01 - 0.18)
+                    targetMouthOpen = Math.min(1.0, rms * 5.2);
+                } else {
+                    targetMouthOpen = 0;
+                }
+            }, 25);
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                chunks.push(value); 
-                totalLength += value.length;
+                
+                // Immediately feed byte chunk to the streaming player queue!
+                processBytes(value);
             }
-
-            // SAFE Uint8Array byte-merging to prevent alignment / RangeError crashes
-            const mergedBytes = new Uint8Array(totalLength);
-            let byteOffset = 0;
-            for (const chunk of chunks) {
-                mergedBytes.set(chunk, byteOffset);
-                byteOffset += chunk.length;
-            }
-
-            // Create aligned Float32Array on the fully merged buffer
-            const floatData = new Float32Array(mergedBytes.buffer);
-
-            // Construct audio buffer with exact samples
-            const buffer = audioCtx.createBuffer(1, floatData.length, 48000);
-            buffer.getChannelData(0).set(floatData);
-
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(analyser); 
-            analyser.connect(audioCtx.destination);
-            
-            // Resume Audio Context if suspended by browser security
-            if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-            }
-            
-            source.start();
-
-            // Frequency volume tracking for real-time lip sync
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            if (speechInterval) clearInterval(speechInterval);
-            
-            speechInterval = setInterval(() => {
-                analyser.getByteFrequencyData(dataArray);
-                const avgVolume = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
-                // Map the frequency energy average smoothly to a range of 0.0 - 0.95 mouth opening
-                targetMouthOpen = Math.min(0.95, avgVolume / 45);
-            }, 30);
-
-            source.onended = () => {
-                clearInterval(speechInterval);
-                targetMouthOpen = 0;
-                // Transition emotional expression back to relaxed
-                for (const key in expressionTargets) {
-                    expressionTargets[key] = 0;
-                }
-                expressionTargets.relaxed = 0.45;
-            };
 
         } catch (err) {
             subtitle.innerText = '連線錯誤，請確認 API 服務是否啟動...';
@@ -745,7 +803,6 @@
             }
         };
     } else {
-        // If not supported natively in this browser, we hide and alert log
         micBtn.style.display = 'none';
         console.warn('[System Warning] Web Speech API is not supported in this browser.');
     }
