@@ -3,258 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>緋雪 Voice Bot Demo</title>
+    <title>緋雪 AI 虛擬客服</title>
     <style>
-        :root {
-            --bg: #0a0a0f;
-            --card: #16161e;
-            --primary: #8b5cf6;
-            --text: #e2e8f0;
-            --text-muted: #94a3b8;
-            --success: #10b981;
-        }
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background: var(--card);
-            padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            width: 90%;
-            max-width: 500px;
-            border: 1px solid #333;
-        }
-        h1 {
-            text-align: center;
-            background: linear-gradient(to right, #a78bfa, #3b82f6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-        p.subtitle {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 2rem;
-        }
-        .form-group { margin-bottom: 1.5rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        textarea, select {
-            width: 100%; padding: 0.8rem; background: #0f0f14; border: 1px solid #333;
-            color: white; border-radius: 8px; font-size: 1rem; box-sizing: border-box;
-        }
-        textarea:focus, select:focus { outline: none; border-color: var(--primary); }
-        button {
-            width: 100%; padding: 1rem; background: var(--primary); color: white;
-            border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold;
-            cursor: pointer; transition: opacity 0.2s;
-        }
-        button:hover { opacity: 0.9; }
-        button:disabled { background: #444; cursor: not-allowed; }
-        .status {
-            margin-top: 1rem; text-align: center; font-size: 0.9rem;
-            color: var(--text-muted); height: 1.2rem; display: flex; justify-content: center; align-items: center; gap: 8px;
-        }
-        .visualizer {
-            height: 60px; background: #0f0f14; border-radius: 8px; margin-top: 1rem;
-            display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
-        }
-        .bar {
-            width: 4px; background: var(--primary); margin: 0 2px; border-radius: 2px; transition: height 0.05s ease; height: 4px;
-        }
-        .dot {
-            width: 8px; height: 8px; border-radius: 50%; background: var(--success);
-            animation: pulse 1s infinite; display: none;
-        }
-        @keyframes pulse {
-            0% { transform: scale(0.9); opacity: 0.7; }
-            100% { transform: scale(1.2); opacity: 1; }
-        }
+        body { margin: 0; background: #050508; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
+        #avatar-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a24 0%, #000 100%); }
+        #subtitle-box { position: absolute; bottom: 100px; width: 80%; max-width: 800px; text-align: center; font-size: 1.5rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); min-height: 2rem; color: #e2e8f0; }
+        #input-area { position: absolute; bottom: 20px; width: 80%; max-width: 600px; display: flex; gap: 10px; }
+        #user-input { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px 20px; border-radius: 30px; outline: none; font-size: 1rem; backdrop-filter: blur(10px); }
+        #user-input:focus { border-color: #8b5cf6; }
+        #send-btn { background: #8b5cf6; border: none; color: white; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        #status-badge { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; border: 1px solid #333; }
+        #thinking-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; color: #8b5cf6; display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>🗣️ Voice Bot API</h1>
-    <p class="subtitle">One-Person Company Edition | Smooth Streaming</p>
+<div id="avatar-container"></div>
 
-    <div class="form-group">
-        <label>Text to Speak</label>
-        <textarea id="textInput" rows="3" placeholder="老公想聽什麼？">早安呀～今天也要元氣滿滿喔！</textarea>
-    </div>
+<div id="status-badge">🟢 Online | VoxCPM Local</div>
+<div id="thinking-badge">💭 思考中...</div>
 
-    <div class="form-group">
-        <label>Style</label>
-        <select id="styleSelect">
-            <option value="sweet">💕 Sweet (撒嬌)</option>
-            <option value="professional">👔 Professional (專業)</option>
-            <option value="casual">☀️ Casual (輕鬆)</option>
-        </select>
-    </div>
+<div id="subtitle-box">老公～歡迎回來！今天想聊什麼呢？</div>
 
-    <button id="speakBtn" onclick="speak()">Speak Now</button>
-    
-    <div class="visualizer" id="visualizer"></div>
-    <div class="status" id="status">
-        <div class="dot" id="streamDot"></div>
-        <span id="statusText">Ready</span>
-    </div>
+<div id="input-area">
+    <input type="text" id="user-input" placeholder="輸入訊息或按 OpenLess 快捷鍵..." autofocus>
+    <button id="send-btn">發送</button>
 </div>
 
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <script>
-    // Setup Visualizer Bars
-    const viz = document.getElementById('visualizer');
-    const bars = [];
-    for(let i=0; i<20; i++) {
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        viz.appendChild(bar);
-        bars.push(bar);
+    // --- 3D Scene Setup ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 4;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('avatar-container').appendChild(renderer.domElement);
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0x404040, 1.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1); dirLight.position.set(2, 2, 5); scene.add(dirLight);
+    const rimLight = new THREE.DirectionalLight(0x8b5cf6, 1.5); rimLight.position.set(-2, 1, -2); scene.add(rimLight);
+
+    // Avatar Head
+    const head = new THREE.Group(); scene.add(head);
+
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({ color: 0xffe0d0, roughness: 0.4 }));
+    head.add(headMesh);
+
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat); leftEye.position.set(-0.35, 0.15, 0.85); head.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat); rightEye.position.set(0.35, 0.15, 0.85); head.add(rightEye);
+
+    // Mouth
+    const mouthGeo = new THREE.SphereGeometry(0.15, 16, 16);
+    const mouthMat = new THREE.MeshBasicMaterial({ color: 0xcc3333 });
+    const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+    mouth.position.set(0, -0.35, 0.9); mouth.scale.set(1.5, 1, 1); head.add(mouth);
+
+    // Hair
+    const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(1.05, 32, 32, 0, 6.3, 0, 1.5), new THREE.MeshStandardMaterial({ color: 0x2a1b38 }));
+    hairMesh.position.y = 0.1; head.add(hairMesh);
+
+    // Animation Loop
+    let targetMouthOpen = 0; let currentMouthOpen = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.2;
+        mouth.scale.y = 0.2 + currentMouthOpen * 3; 
+        head.rotation.y = Math.sin(Date.now() * 0.001) * 0.05;
+        renderer.render(scene, camera);
     }
+    animate();
 
-    let audioCtx = null;
-    let nextStartTime = 0;
-    
-    // Buffer accumulation state
-    let audioBufferAccumulator = []; 
-    let accumulatedLength = 0;
-    const BUFFER_THRESHOLD = 9600; // ~0.2s at 48kHz
+    // --- Audio & Logic ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
 
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 48000
-            });
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        nextStartTime = audioCtx.currentTime + 0.1;
-        audioBufferAccumulator = [];
-        accumulatedLength = 0;
-    }
+    async function startConversation(userText) {
+        const input = document.getElementById('user-input');
+        const subtitle = document.getElementById('subtitle-box');
+        const thinking = document.getElementById('thinking-badge');
 
-    async function scheduleAccumulated() {
-        if (accumulatedLength === 0) return;
-
-        // Create AudioBuffer
-        const buffer = audioCtx.createBuffer(1, accumulatedLength, 48000);
-        const channelData = buffer.getChannelData(0);
-        
-        let offset = 0;
-        for (const chunk of audioBufferAccumulator) {
-            channelData.set(chunk, offset);
-            offset += chunk.length;
-        }
-
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        
-        if (nextStartTime < audioCtx.currentTime) {
-            nextStartTime = audioCtx.currentTime;
-        }
-        source.start(nextStartTime);
-        nextStartTime += buffer.duration;
-
-        // Reset
-        audioBufferAccumulator = [];
-        accumulatedLength = 0;
-    }
-
-    function handleAudioChunk(value) {
-        // Convert Uint8Array to Float32Array
-        const floatData = new Float32Array(value.buffer, value.byteOffset, value.byteLength / 4);
-        
-        audioBufferAccumulator.push(floatData);
-        accumulatedLength += floatData.length;
-
-        // Visualizer
-        const h = Math.min(50, Math.random() * 40 + 10);
-        const idx = Math.floor(Math.random() * 20);
-        bars[idx].style.height = h + 'px';
-
-        // Schedule if buffer is big enough
-        if (accumulatedLength > BUFFER_THRESHOLD) {
-            scheduleAccumulated();
-        }
-    }
-
-    async function speak() {
-        const text = document.getElementById('textInput').value;
-        const style = document.getElementById('styleSelect').value;
-        const btn = document.getElementById('speakBtn');
-        const statusText = document.getElementById('statusText');
-        const streamDot = document.getElementById('streamDot');
-
-        if (!text) return;
-
-        btn.disabled = true;
-        btn.innerText = "Streaming...";
-        statusText.innerText = "Connecting...";
-        streamDot.style.display = 'block';
-        streamDot.style.background = '#8b5cf6';
-
-        initAudio();
+        input.value = '';
+        subtitle.innerText = userText;
+        thinking.style.display = 'block';
+        targetMouthOpen = 0;
 
         try {
-            const response = await fetch('/v1/audio/speech', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, style, stream: true })
+            // 1. Get AI Brain Response
+            const res = await fetch(`/v1/chat/reply?text=${encodeURIComponent(userText)}`);
+            const data = await res.json();
+            const replyText = data.reply;
+
+            // 2. Speak the Reply
+            subtitle.innerText = replyText;
+            thinking.style.display = 'none';
+            
+            const ttsRes = await fetch('/v1/audio/speech', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: replyText, style: 'sweet', stream: true })
             });
 
-            if (!response.ok) throw new Error("API Error");
+            const reader = ttsRes.body.getReader();
+            let chunks = []; let totalLength = 0;
 
-            statusText.innerText = "Receiving & Playing...";
-            streamDot.style.background = '#10b981';
-
-            const reader = response.body.getReader();
-
-            while (true) {
+            while(true) {
                 const { done, value } = await reader.read();
-                if (done) break;
-
-                if (value) {
-                    handleAudioChunk(value);
-                }
+                if(done) break;
+                chunks.push(value); totalLength += value.length;
             }
 
-            // Play remaining buffer
-            await scheduleAccumulated();
-            
-            // Wait for audio to finish playing before re-enabling
-            // We calculate when the last source will stop
-            if (nextStartTime > audioCtx.currentTime) {
-                 setTimeout(() => {
-                    statusText.innerText = "Done.";
-                    btn.innerText = "Speak Again";
-                    btn.disabled = false;
-                    streamDot.style.display = 'none';
-                    bars.forEach(b => b.style.height = '4px');
-                 }, (nextStartTime - audioCtx.currentTime) * 1000 + 100);
-            } else {
-                 statusText.innerText = "Done.";
-                 btn.innerText = "Speak Again";
-                 btn.disabled = false;
-                 streamDot.style.display = 'none';
+            const floatData = new Float32Array(totalLength / 4);
+            let offset = 0;
+            for (const chunk of chunks) {
+                const f = new Float32Array(chunk.buffer, chunk.byteOffset, chunk.byteLength / 4);
+                floatData.set(f, offset); offset += f.length;
             }
+
+            const buffer = audioCtx.createBuffer(1, floatData.length, 48000);
+            buffer.getChannelData(0).set(floatData);
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(analyser); analyser.connect(audioCtx.destination);
+            source.start();
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            const interval = setInterval(() => {
+                analyser.getByteFrequencyData(dataArray);
+                const avg = dataArray.reduce((a,b)=>a+b,0) / dataArray.length;
+                targetMouthOpen = Math.min(1, avg / 50); 
+            }, 50);
+
+            source.onended = () => { clearInterval(interval); targetMouthOpen = 0; };
 
         } catch (err) {
-            statusText.innerText = "Error: " + err.message;
-            btn.innerText = "Retry";
-            btn.disabled = false;
-            streamDot.style.display = 'none';
+            thinking.style.display = 'none';
+            subtitle.innerText = "連線錯誤...";
+            console.error(err);
         }
     }
+
+    // --- Input Handling ---
+    document.getElementById('send-btn').onclick = () => {
+        const t = document.getElementById('user-input').value;
+        if(t) startConversation(t);
+    };
+    document.getElementById('user-input').onkeypress = (e) => {
+        if(e.key === 'Enter') {
+            const t = e.target.value;
+            if(t) startConversation(t);
+        }
+    };
 </script>
 
 </body>
